@@ -374,10 +374,12 @@ class MongoDBRealTimeStreaming:
 
             except Exception as watch_error:
                 # 단일 MongoDB 인스턴스에서는 change stream을 사용할 수 없음
-                logger.warning(
-                    f"⚠️ Change Stream 사용 불가 (단일 인스턴스): {str(watch_error)[:100]}..."
-                )
-                logger.info("📡 폴링 방식으로 메트릭 모니터링 대체")
+                error_msg = str(watch_error)
+                if "40573" in error_msg or "replica sets" in error_msg.lower():
+                    logger.info("📡 단일 MongoDB 인스턴스 감지 - 폴링 방식으로 모니터링 대체")
+                else:
+                    logger.warning(f"⚠️ Change Stream 사용 불가: {error_msg[:100]}...")
+                logger.info("📡 폴링 방식으로 메트릭 모니터링 시작")
 
                 # 폴링 방식으로 대체
                 self.event_handlers["metrics"] = event_handler
@@ -402,7 +404,11 @@ class MongoDBRealTimeStreaming:
                     logger.error(f"❌ 이벤트 핸들러 실행 실패: {handler_error}")
 
         except Exception as loop_error:
-            logger.error(f"❌ 변경사항 처리 루프 오류: {loop_error}")
+            error_msg = str(loop_error)
+            if "40573" in error_msg or "replica sets" in error_msg.lower():
+                logger.debug(f"📡 Change Stream 기능 비활성화됨 (단일 MongoDB): {error_msg}")
+            else:
+                logger.error(f"❌ 변경사항 처리 루프 오류: {loop_error}")
         finally:
             # 스트림 정리
             if stream_name in self.change_streams:

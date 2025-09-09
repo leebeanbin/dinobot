@@ -623,6 +623,8 @@ class NotionService:
     @notion_retry(max_retries=3, backoff_factor=1.0)
     async def extract_page_text(self, page_id: str, use_cache: bool = True) -> str:
         """노션 페이지의 모든 텍스트 내용을 추출 (캐싱 지원)"""
+        if not page_id or not page_id.strip():
+            raise ValueError("페이지 ID가 비어있습니다")
         # 캐시 확인 (최근 10분 내 캐시된 내용이 있으면 사용)
         if use_cache:
             try:

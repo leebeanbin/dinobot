@@ -132,19 +132,19 @@ class SyncService:
             return 0
 
     @safe_execution("sync_loop")
-    async def _sync_loop(self):
+    async def _execute_continuous_sync_loop(self):
         """동기화 루프"""
-        while self.is_running:
+        while self.is_synchronization_running:
             try:
                 await self.sync_notion_pages()
                 # 주기적으로 삭제된 페이지 정리 (1시간마다)
                 if (
-                    not self._last_sync_time
-                    or (datetime.now() - self._last_sync_time).seconds > settings.cleanup_interval
+                    not self._last_successful_sync_timestamp
+                    or (datetime.now() - self._last_successful_sync_timestamp).seconds > settings.cleanup_interval
                 ):
-                    await self.clean_deleted_pages()
-                    self._last_sync_time = datetime.now()
-                await asyncio.sleep(self.sync_interval)
+                    await self.remove_deleted_notion_pages_from_database()
+                    self._last_successful_sync_timestamp = datetime.now()
+                await asyncio.sleep(self.synchronization_interval_seconds)
             except asyncio.CancelledError:
                 break
             except Exception as e:

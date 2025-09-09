@@ -987,6 +987,26 @@ MEETUP_LOADER_COLLECTIONS = {
             {"keys": [("source", 1)], "options": {}},
         ],
     },
+    "page_content_cache": {
+        "description": "Notion 페이지 내용 캐시",
+        "schema": {
+            "bsonType": "object",
+            "required": ["page_id", "content", "cached_at"],
+            "properties": {
+                "page_id": {"bsonType": "string", "description": "Notion 페이지 ID"},
+                "content": {"bsonType": "string", "description": "캐시된 페이지 내용"},
+                "content_length": {"bsonType": "int", "description": "내용 길이"},
+                "cached_at": {"bsonType": "double", "description": "캐시된 시간 (timestamp)"},
+                "expires_at": {"bsonType": "double", "description": "만료 시간 (timestamp)"},
+                "created_at": {"bsonType": "date", "description": "생성 시간"},
+            },
+        },
+        "indexes": [
+            {"keys": [("page_id", 1)], "options": {"unique": True}},
+            {"keys": [("cached_at", -1)], "options": {}},
+            {"keys": [("expires_at", 1)], "options": {"expireAfterSeconds": 0}},  # TTL index
+        ],
+    },
 }
 
 

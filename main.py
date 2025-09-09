@@ -158,7 +158,7 @@ class ServiceManager(IServiceManager):
 
             # 3. Notion 동기화 서비스 시작 (데이터 로딩)
             logger.info("🔄 Notion 동기화 서비스 시작 중...")
-            await sync_service.start_sync_monitor()
+            await sync_service.start_continuous_synchronization_monitor()
 
             # 4. 초기 데이터 동기화 완료 대기
             logger.info("⏳ 초기 데이터 동기화 완료 대기 중...")
@@ -219,7 +219,7 @@ class ServiceManager(IServiceManager):
 
             # Notion 동기화 서비스 종료
             logger.info("🔄 Notion 동기화 서비스 종료 중...")
-            await sync_service.stop_sync_monitor()
+            await sync_service.stop_synchronization_monitor()
 
             # Discord 봇 종료 (HTTP 세션 정리 포함)
             logger.info("🤖 Discord 봇 종료 중...")
