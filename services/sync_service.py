@@ -21,48 +21,56 @@ logger = get_logger("services.sync")
 
 
 class SyncService:
-    """Notion 동기화 서비스"""
+    """
+    Notion synchronization service responsible for maintaining data consistency
+    between Notion pages and local MongoDB storage
+    """
 
     def __init__(self):
-        self.sync_interval = 180  # 3분마다 동기화 (성능 향상)
-        self.is_running = False
-        self.sync_task = None
-        # 성능 최적화를 위한 캐시
-        self._page_cache = {}  # 페이지 ID -> 마지막 수정 시간
-        self._last_sync_time = None
+        self.synchronization_interval_seconds = 180  # Sync every 3 minutes for optimal performance
+        self.is_synchronization_running = False
+        self.background_sync_task = None
+        # Performance optimization cache
+        self._notion_page_cache = {}  # Maps page_id -> last_modification_timestamp
+        self._last_successful_sync_timestamp = None
 
     @safe_execution("start_sync_monitor")
-    async def start_sync_monitor(self):
-        """동기화 모니터링 시작"""
-        if self.is_running:
-            logger.warning("⚠️ 동기화 모니터링이 이미 실행 중입니다")
+    async def start_continuous_synchronization_monitor(self):
+        """Start continuous synchronization monitoring service"""
+        if self.is_synchronization_running:
+            logger.warning("⚠️ Synchronization monitoring service is already running")
             return
 
-        self.is_running = True
-        logger.info("🔄 Notion 동기화 모니터링 시작")
+        self.is_synchronization_running = True
+        logger.info("🔄 Starting Notion synchronization monitoring service")
 
-        # 백그라운드에서 동기화 실행
-        self.sync_task = asyncio.create_task(self._sync_loop())
+        # Execute synchronization in background task
+        self.background_sync_task = asyncio.create_task(self._execute_continuous_sync_loop())
 
     @safe_execution("stop_sync_monitor")
-    async def stop_sync_monitor(self):
-        """동기화 모니터링 중지"""
-        if not self.is_running:
+    async def stop_synchronization_monitor(self):
+        """Stop synchronization monitoring service gracefully"""
+        if not self.is_synchronization_running:
             return
 
-        self.is_running = False
-        if self.sync_task:
-            self.sync_task.cancel()
+        self.is_synchronization_running = False
+        if self.background_sync_task:
+            self.background_sync_task.cancel()
             try:
-                await self.sync_task
+                await self.background_sync_task
             except asyncio.CancelledError:
                 pass
 
-        logger.info("🛑 Notion 동기화 모니터링 중지")
+        logger.info("🛑 Notion synchronization monitoring service stopped")
 
     @safe_execution("clean_deleted_pages")
-    async def clean_deleted_pages(self):
-        """삭제된 페이지 정리 (개선된 버전)"""
+    async def remove_deleted_notion_pages_from_database(self):
+        """
+        Remove deleted Notion pages from MongoDB database
+        
+        This method identifies pages that no longer exist in Notion
+        and removes them from our local database to maintain data consistency.
+        """
         try:
             logger.info("🧹 삭제된 페이지 정리 시작")
 

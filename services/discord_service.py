@@ -65,10 +65,10 @@ class DiscordService(IDiscordService):
             description="MeetupLoader - 노션-디스코드 통합 bot",
         )
 
-        # Internal state
-        self.ready = False
-        self.guild_object = None
-        self.command_callback = None  # Business logic callback
+        # Internal state management
+        self.is_bot_ready = False
+        self.target_guild = None
+        self.business_logic_callback = None  # Business logic callback handler
 
         # Register bot event handlers
         self._register_event_handlers()
@@ -84,29 +84,29 @@ class DiscordService(IDiscordService):
             logger.info(f"🚀 Discord bot 연결 완료: {self.bot.user}")
             logger.info(f"📊 연결된 서버 수: {len(self.bot.guilds)}개")
 
-            # 길드 객체 설정
-            self.guild_object = discord.Object(id=int(settings.discord_guild_id))
+            # Configure target guild object
+            self.target_guild = discord.Object(id=int(settings.discord_guild_id))
 
             # 슬래시 명령어 동기화
             try:
-                sync_result = await self.bot.tree.sync(guild=self.guild_object)
+                sync_result = await self.bot.tree.sync(guild=self.target_guild)
                 logger.info(f"⚡ 슬래시 명령어 동기화 완료: {len(sync_result)}개")
             except Exception as sync_error:
                 logger.error(f"❌ 슬래시 명령어 동기화 실패: {sync_error}")
 
-            self.ready = True
+            self.is_bot_ready = True
 
         @self.bot.event
         async def on_disconnect():
             """bot이 Discord에서 연결이 끊겼을 때 실행"""
             logger.warning("🔌 Discord bot 연결 끊김")
-            self.ready = False
+            self.is_bot_ready = False
 
         @self.bot.event
         async def on_resumed():
             """bot이 Discord에 재연결되었을 때 실행"""
             logger.info("🔄 Discord bot 재연결 완료")
-            self.ready = True
+            self.is_bot_ready = True
 
         @self.bot.event
         async def on_application_command_error(
@@ -154,7 +154,7 @@ class DiscordService(IDiscordService):
                 return True
 
             await self.bot.close()
-            self.ready = False
+            self.is_bot_ready = False
             logger.info("👋 Discord bot 종료 완료")
             return True
 
@@ -1078,7 +1078,7 @@ class DiscordService(IDiscordService):
             uptime_string = str(timedelta(seconds=int(uptime_seconds)))
 
             return {
-                "ready": self.ready and self.bot.is_ready(),
+                "ready": self.is_bot_ready and self.bot.is_ready(),
                 "user": {
                     "id": self.bot.user.id if self.bot.user else None,
                     "name": self.bot.user.name if self.bot.user else None,

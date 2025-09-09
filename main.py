@@ -84,11 +84,11 @@ class ServiceManager(IServiceManager):
     """
 
     def __init__(self):
-        # 서비스 인스턴스들
+        # Service instances following dependency injection pattern
         self._notion_service = notion_service
         self._discord_service = discord_service
-        self._mcp_manager = None  # MCP 매니저는 나중에 초기화
-        self._mcp_fallback_manager = None  # MCP 폴백 매니저는 나중에 초기화
+        self._model_context_processor = None  # Model context processor initialized later
+        self._fallback_context_processor = None  # Fallback context processor initialized later
 
         # FastAPI 애플리케이션
         self.web_application = FastAPI(
