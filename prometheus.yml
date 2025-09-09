@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # MeetupLoader 애플리케이션 메트릭
+  - job_name: 'meetuploader'
+    static_configs:
+      - targets: ['meetuploader:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+
+  # Prometheus 자체 메트릭
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # MongoDB 메트릭 (MongoDB Exporter 사용 시)
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:9216']
+    scrape_interval: 30s
+
+  # Redis 메트릭 (Redis Exporter 사용 시)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:9121']
+    scrape_interval: 30s
+
+# 알림 규칙 (선택사항)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
