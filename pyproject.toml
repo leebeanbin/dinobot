@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "dinobot"
+version = "0.1.0"
+description = "DinoBot - Discord Notion Integration Bot"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.4"
+uvicorn = "^0.30.6"
+discord-py = "^2.4.0"
+notion-client = "^2.2.1"
+motor = "^3.3.2"
+pymongo = "^4.8.0"
+tzdata = "^2025.1"
+pydantic = "^2.5.0"
+python-multipart = "^0.0.9"
+python-dotenv = "^1.0.0"
+pydantic-settings = "^2.10.1"
+matplotlib = "^3.10.6"
+seaborn = "^0.13.2"
+prometheus-client = "^0.19.0"
+google-auth = "^2.35.0"
+google-auth-oauthlib = "^1.2.0"
+google-auth-httplib2 = "^0.2.0"
+google-api-python-client = "^2.150.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+black = "^24.0.0"
+ruff = "^0.6.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dinobot = "main:main"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
