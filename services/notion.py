@@ -74,7 +74,7 @@ class NotionService:
     """
 
     def __init__(self):
-        self.notion_client = NotionClient(auth=settings.notion_token)
+        self.notion_api_client = NotionClient(auth=settings.notion_token)
         logger.info("🚀 Notion service manager initialization complete")
 
     # -------------------
@@ -140,7 +140,7 @@ class NotionService:
 
             # 노션 API에서 최신 스키마 가져오기
             with logger_manager.performance_logger("notion_schema_api_call"):
-                raw_response = self.notion_client.databases.retrieve(
+                raw_response = self.notion_api_client.databases.retrieve(
                     database_id=notion_db_id
                 )
 
@@ -254,7 +254,7 @@ class NotionService:
                 }
             }
 
-            self.notion_client.databases.update(
+            self.notion_api_client.databases.update(
                 database_id=notion_db_id, **update_payload
             )
 
@@ -489,7 +489,7 @@ class NotionService:
         )
 
         try:
-            result = self.notion_client.pages.create(
+            result = self.notion_api_client.pages.create(
                 parent={"database_id": settings.factory_tracker_db_id},
                 properties=properties,
             )
@@ -529,7 +529,7 @@ class NotionService:
         )
 
         try:
-            result = self.notion_client.pages.create(
+            result = self.notion_api_client.pages.create(
                 parent={"database_id": settings.board_db_id},
                 properties=properties,
             )
@@ -566,7 +566,7 @@ class NotionService:
                 },
             }
 
-            response = self.notion_client.pages.create(**page_data)
+            response = self.notion_api_client.pages.create(**page_data)
             logger.info(f"✅ 문서 페이지 생성: {title} (유형: {doc_type})")
             return response
 
@@ -585,7 +585,7 @@ class NotionService:
         """Notion에서 페이지 존재 여부 확인 (개선된 버전)"""
         try:
             # 페이지 정보 조회 시도
-            response = self.notion_client.pages.retrieve(page_id=page_id)
+            response = self.notion_api_client.pages.retrieve(page_id=page_id)
             
             # 페이지가 존재하고 archived되지 않았는지 확인
             if response:
@@ -611,7 +611,7 @@ class NotionService:
     async def get_page_info(self, page_id: str) -> Optional[Dict[str, Any]]:
         """Notion에서 페이지 기본 정보 조회"""
         try:
-            response = self.notion_client.pages.retrieve(page_id=page_id)
+            response = self.notion_api_client.pages.retrieve(page_id=page_id)
             return response
         except Exception as e:
             # 404 오류 = 페이지 삭제됨
@@ -647,7 +647,7 @@ class NotionService:
         try:
             while True:
                 with logger_manager.performance_logger("notion_block_fetch"):
-                    response = self.notion_client.blocks.children.list(
+                    response = self.notion_api_client.blocks.children.list(
                         block_id=page_id, start_cursor=cursor
                     )
 

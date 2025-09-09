@@ -1,0 +1,103 @@
+# DinoBot Fly.io 배포 설정
+# Fly.io 플랫폼에서 실행되는 컨테이너 설정
+
+app = "dinobot"
+primary_region = "nrt"  # 도쿄 리전 (한국과 가장 가까움)
+
+# 빌드 설정
+[build]
+  dockerfile = "Dockerfile"
+
+# HTTP 서비스 설정
+[http_service]
+  internal_port = 8888
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  # 헬스체크 설정
+  [http_service.checks]
+    [http_service.checks.health]
+      grace_period = "30s"
+      interval = "15s"
+      method = "GET"
+      path = "/health"
+      protocol = "http"
+      timeout = "10s"
+      tls_skip_verify = false
+
+# 가상 머신 설정
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024  # 메모리 증가 (MongoDB 연결 및 Notion API 처리용)
+
+# 환경 변수 설정 (민감하지 않은 정보만)
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8888"
+  TIMEZONE = "Asia/Seoul"
+  LOG_LEVEL = "INFO"
+  LOG_TO_FILE = "true"
+  SCHEMA_CACHE_TTL = "3600"
+
+# 프로세스 그룹 설정
+[processes]
+  app = "python run.py"
+
+# 메트릭 설정 (Fly.io 모니터링)
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# 리소스 제한
+[[services]]
+  protocol = "tcp"
+  internal_port = 8888
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  # 헬스체크 설정 (상세)
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+  [[services.tcp_checks]]
+    grace_period = "30s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "10s"
+
+  [[services.http_checks]]
+    interval = "30s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    restart_limit = 0
+    timeout = "10s"
+    tls_skip_verify = false
+
+# 자동 스케일링 설정
+[deploy]
+  release_command = "echo 'Starting DinoBot deployment...'"
+  strategy = "rolling"
+
+# 로그 설정
+[logging]
+  level = "info"
+
+# 재시작 정책
+[restart]
+  policy = "on-failure"
