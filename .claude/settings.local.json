@@ -9,7 +9,8 @@
       "Bash(gh repo create:*)",
       "Bash(git push:*)",
       "Bash(poetry install:*)",
-      "Bash(poetry run:*)"
+      "Bash(poetry run:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
