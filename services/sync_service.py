@@ -64,6 +64,41 @@ class SyncService:
         logger.info("🛑 Notion synchronization monitoring service stopped")
 
     @safe_execution("clean_deleted_pages")
+    async def clean_invalid_database_entries(self):
+        """Clean up invalid database entries with empty or malformed page IDs"""
+        try:
+            collection = get_meetup_collection("notion_pages")
+            
+            # 빈 페이지 ID나 유효하지 않은 페이지 ID를 가진 항목 찾기
+            invalid_entries = await collection.find({
+                "$or": [
+                    {"page_id": {"$exists": False}},
+                    {"page_id": ""},
+                    {"page_id": None},
+                    {"page_id": {"$regex": "^\\s*$"}}  # 공백만 있는 경우
+                ]
+            }).to_list(None)
+            
+            if invalid_entries:
+                # 잘못된 항목들 삭제
+                result = await collection.delete_many({
+                    "$or": [
+                        {"page_id": {"$exists": False}},
+                        {"page_id": ""},
+                        {"page_id": None},
+                        {"page_id": {"$regex": "^\\s*$"}}
+                    ]
+                })
+                logger.info(f"🧹 잘못된 데이터베이스 항목 {result.deleted_count}개 정리 완료")
+                return result.deleted_count
+            else:
+                logger.debug("✅ 정리할 잘못된 항목이 없습니다")
+                return 0
+                
+        except Exception as e:
+            logger.error(f"❌ 데이터베이스 정리 실패: {e}")
+            return 0
+
     async def remove_deleted_notion_pages_from_database(self):
         """
         Remove deleted Notion pages from MongoDB database
@@ -136,14 +171,16 @@ class SyncService:
         """동기화 루프"""
         while self.is_synchronization_running:
             try:
-                await self.sync_notion_pages()
-                # 주기적으로 삭제된 페이지 정리 (1시간마다)
+                # 주기적으로 잘못된 데이터베이스 항목과 삭제된 페이지 정리 (1시간마다)
                 if (
                     not self._last_successful_sync_timestamp
                     or (datetime.now() - self._last_successful_sync_timestamp).seconds > settings.cleanup_interval
                 ):
+                    await self.clean_invalid_database_entries()
                     await self.remove_deleted_notion_pages_from_database()
                     self._last_successful_sync_timestamp = datetime.now()
+                
+                await self.sync_notion_pages()
                 await asyncio.sleep(self.synchronization_interval_seconds)
             except asyncio.CancelledError:
                 break
@@ -261,6 +298,12 @@ class SyncService:
             title = page.get("title", "제목 없음")
             thread_id = page.get("thread_id")
             last_synced = page.get("last_synced", 0)
+            
+            # 페이지 ID 유효성 검사
+            if not page_id or not page_id.strip():
+                logger.warning(f"⚠️ 유효하지 않은 페이지 ID, 삭제: {title}")
+                await collection.delete_one({"_id": page.get("_id")})
+                return (page_id, title, thread_id, page.get("page_type"), page.get("created_by"))
             
             # 최근 30분 내에 동기화했다면 간단 체크만 수행
             current_time = datetime.now().timestamp()
