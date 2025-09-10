@@ -56,8 +56,8 @@ class DiscordService(IDiscordService):
     def __init__(self):
         # Discord bot 설정
         intents = discord.Intents.default()
-        # message_content intent는 privileged이므로 필요한 경우에만 활성화
-        # intents.message_content = True
+        # Message Content Intent 활성화 (Discord Developer Portal에서도 활성화 필요)
+        intents.message_content = True
 
         self.bot = commands.Bot(
             command_prefix="!",
