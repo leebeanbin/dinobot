@@ -1,4 +1,4 @@
-# MeetupLoader 🚀
+# DinoBot 🚀
 
 <div align="center">
 
@@ -25,7 +25,7 @@
 
 <div align="center">
 
-### 💡 **MeetupLoader는 무엇인가요?**
+### 💡 **DinoBot는 무엇인가요?**
 
 **노션(Notion)과 디스코드(Discord)를 완벽하게 통합하여 팀 협업을 혁신하는 고성능 봇입니다.**
 
@@ -343,7 +343,7 @@ docker run -d -p 27017:27017 --name mongodb mongo:6
 poetry run python run.py
 
 # 방법 2: 모듈 형태
-poetry run python -m meetuploader.main
+poetry run python -m dinobot.main
 
 # 방법 3: 가상환경 활성화
 poetry shell
@@ -384,7 +384,7 @@ BOARD_DB_ID=your_board_db_id
 **MongoDB 설정**
 ```bash
 MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=meetuploader
+MONGODB_DB_NAME=dinobot
 ```
 
 </td>
@@ -536,7 +536,7 @@ WEBHOOK_SECRET=your_secure_webhook_secret
 ### 🎯 클린 아키텍처
 
 ```
-meetuploader/
+dinobot/
 ├── core/           # 핵심 시스템 (로깅, DB, 예외처리)
 ├── models/         # DTO 및 인터페이스 정의
 ├── services/       # 비즈니스 로직 구현
@@ -576,12 +576,12 @@ graph TD
 
 **Dockerfile 빌드**
 ```bash
-docker build -t meetuploader .
+docker build -t dinobot .
 ```
 
 **컨테이너 실행**
 ```bash
-docker run --env-file .env -p 8888:8888 meetuploader
+docker run --env-file .env -p 8888:8888 dinobot
 ```
 
 </td>
@@ -591,7 +591,7 @@ docker run --env-file .env -p 8888:8888 meetuploader
 ```yaml
 version: '3.8'
 services:
-  meetuploader:
+  dinobot:
     build: .
     ports:
       - "8888:8888"
@@ -623,7 +623,7 @@ curl -L https://fly.io/install.sh | sh
 **2. 로그인 및 앱 생성**
 ```bash
 fly auth login
-fly apps create meetuploader
+fly apps create dinobot
 ```
 
 </td>
@@ -655,7 +655,7 @@ fly deploy
 
 ```
 meetupLoader/
-├── meetuploader/                    # 메인 애플리케이션 패키지
+├── dinobot/                    # 메인 애플리케이션 패키지
 │   ├── core/                       # 핵심 모듈
 │   │   ├── config.py              # 설정 관리
 │   │   ├── database.py            # 데이터베이스 연결
@@ -697,7 +697,7 @@ meetupLoader/
 
 **포맷팅**
 ```bash
-poetry run black meetuploader/
+poetry run black dinobot/
 ```
 
 </td>
@@ -705,7 +705,7 @@ poetry run black meetuploader/
 
 **린팅**
 ```bash
-poetry run ruff check meetuploader/
+poetry run ruff check dinobot/
 ```
 
 </td>
@@ -809,10 +809,10 @@ class NewService(NewServiceInterface):
 **로그 파일**
 ```bash
 # 로그 파일 위치
-logs/meetuploader_YYYYMMDD.log
+logs/dinobot_YYYYMMDD.log
 
 # 실시간 로그 모니터링
-tail -f logs/meetuploader_20250909.log
+tail -f logs/dinobot_20250909.log
 ```
 
 </td>
@@ -958,10 +958,10 @@ sudo fallocate -l 2G /swapfile
 **에러 로그 확인**
 ```bash
 # 에러만 필터링
-grep "ERROR" logs/meetuploader_*.log
+grep "ERROR" logs/dinobot_*.log
 
 # 특정 시간대 로그
-grep "2025-09-09 13:" logs/meetuploader_*.log
+grep "2025-09-09 13:" logs/dinobot_*.log
 ```
 
 </td>
@@ -970,10 +970,10 @@ grep "2025-09-09 13:" logs/meetuploader_*.log
 **성능 분석**
 ```bash
 # 응답 시간 분석
-grep "완료" logs/meetuploader_*.log | grep "실행시간"
+grep "완료" logs/dinobot_*.log | grep "실행시간"
 
 # API 호출 분석
-grep "HTTP Request" logs/meetuploader_*.log
+grep "HTTP Request" logs/dinobot_*.log
 ```
 
 </td>
@@ -1011,7 +1011,7 @@ git checkout -b feature/amazing-feature
 poetry run pytest
 
 # 코드 포맷팅
-poetry run black meetuploader/
+poetry run black dinobot/
 ```
 
 **4. 커밋 및 푸시**
@@ -1064,7 +1064,7 @@ chore: 빌드/설정 변경
 ```
 MIT License
 
-Copyright (c) 2025 MeetupLoader
+Copyright (c) 2025 DinoBot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1173,12 +1173,12 @@ REST API 상세 문서
 
 <div align="center">
 
-**MeetupLoader**로 팀의 생산성을 한 단계 끌어올려보세요! 🚀
+**DinoBot**로 팀의 생산성을 한 단계 끌어올려보세요! 🚀
 
 [![Star](https://img.shields.io/github/stars/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader)
 [![Fork](https://img.shields.io/github/forks/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader/fork)
 [![Watch](https://img.shields.io/github/watchers/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader)
 
-Made with ❤️ by [MeetupLoader Team](https://github.com/yourusername/meetupLoader/graphs/contributors)
+Made with ❤️ by [DinoBot Team](https://github.com/yourusername/meetupLoader/graphs/contributors)
 
 </div>

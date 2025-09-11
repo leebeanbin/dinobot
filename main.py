@@ -16,36 +16,32 @@ from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.responses import JSONResponse
 
 # 핵심 모듈들
-from core.config import settings
-from core.logger import (
+from src.core.config import settings
+from src.core.logger import (
     initialize_logging_system,
     get_logger,
     logger_manager,
 )
-from core.metrics import get_metrics_collector
-from core.database import (
+from src.core.metrics import get_metrics_collector
+from src.core.database import (
     mongodb_connection,
     initialize_meetup_loader_collections,
     log_system_event,
     save_notion_page,
     get_recent_notion_page_by_user,
 )
-from core.exceptions import global_exception_handler, UserInputException
-from core.global_error_handler import (
+from src.core.exceptions import global_exception_handler, UserInputException
+from src.core.global_error_handler import (
     handle_exception,
     ErrorSeverity,
     setup_global_exception_handlers,
 )
 
-# 서비스 구현체들
-from services.notion import notion_service
-from services.discord_service import discord_service
-from services.analytics import analytics_service
-from services.search_service import search_service
-from services.sync_service import sync_service
+# 서비스 관리자
+from src.core.service_manager import service_manager
 
 # MCP 관련 import 제거
-from services.mongodb_advanced import (
+from src.service.analytics.mongodb_advanced import (
     get_mongodb_analysis_service,
     get_mongodb_auto_management,
     start_realtime_performance_monitoring,
@@ -54,19 +50,25 @@ from services.mongodb_advanced import (
 )
 
 # 모델 및 DTO
-from models.interfaces import IServiceManager
-from models.dtos import (
-    DiscordCommandRequestDTO,
-    DiscordMessageResponseDTO,
-    NotionWebhookRequestDTO,
-    WebhookProcessResultDTO,
+from src.interface.service import IServiceManager
+from src.dto.common import (
+    CommandType,
+    MessageType,
     SystemStatusDTO,
     ServiceStatusDTO,
     MongoDBStatusDTO,
+)
+from src.dto.discord import (
+    DiscordCommandRequestDTO,
+    DiscordMessageResponseDTO,
+)
+from src.dto.notion import (
     TaskCreateRequestDTO,
     MeetingCreateRequestDTO,
-    CommandType,
-    MessageType,
+)
+from src.dto.webhook import (
+    NotionWebhookRequestDTO,
+    WebhookProcessResultDTO,
 )
 
 # Logger initialization
@@ -84,15 +86,18 @@ class ServiceManager(IServiceManager):
     """
 
     def __init__(self):
-        # Service instances following dependency injection pattern
-        self._notion_service = notion_service
-        self._discord_service = discord_service
-        self._model_context_processor = None  # Model context processor initialized later
-        self._fallback_context_processor = None  # Fallback context processor initialized later
+        # 새로운 서비스 매니저 사용
+        self._service_manager = service_manager
+        self._model_context_processor = (
+            None  # Model context processor initialized later
+        )
+        self._fallback_context_processor = (
+            None  # Fallback context processor initialized later
+        )
 
         # FastAPI 애플리케이션
         self.web_application = FastAPI(
-            title="MeetupLoader API",
+            title="DinoBot API",
             description="노션-디스코드 통합 봇 API",
             version="2.0.0",
             docs_url="/docs",
@@ -104,17 +109,20 @@ class ServiceManager(IServiceManager):
         self.service_ready = False
         self.auto_tasks = []
 
-        logger.info("🏗️ 통합 서비스 관리자 초기화 완료")
+        # 통합 서비스 관리자 초기화 완료 (로그 제거)
 
     # ===== I통합_서비스_관리자 인터페이스 구현 =====
 
     @property
     def notion_service(self):
-        return self._notion_service
+        return self._service_manager.get_service("notion")
 
     @property
     def discord_service(self):
-        return self._discord_service
+        try:
+            return self._service_manager.get_service("discord")
+        except KeyError:
+            return None
 
     @property
     def cache_service(self):
@@ -134,18 +142,16 @@ class ServiceManager(IServiceManager):
     async def initialize_system(self) -> bool:
         """전체 시스템을 순차적으로 초기화"""
         self.start_time = datetime.now(settings.tz)
-        logger.info("🚀 MeetupLoader 시스템 초기화 시작")
+        logger.info("🚀 DinoBot 시스템 초기화 시작")
 
         # 전역 예외 처리기 설정
         setup_global_exception_handlers()
 
         try:
             # 1. MongoDB 연결
-            logger.info("📊 MongoDB 연결 중...")
             await mongodb_connection.connect_database()
 
-            # 2. MeetupLoader 서비스 컬렉션 초기화
-            logger.info("🗄️ 서비스 컬렉션 초기화 중...")
+            # 2. DinoBot 서비스 컬렉션 초기화
             collection_result = await initialize_meetup_loader_collections()
 
             # 초기화 결과 로깅
@@ -156,40 +162,43 @@ class ServiceManager(IServiceManager):
                 metadata=collection_result,
             )
 
-            # 3. Notion 동기화 서비스 시작 (데이터 로딩)
-            logger.info("🔄 Notion 동기화 서비스 시작 중...")
-            await sync_service.start_continuous_synchronization_monitor()
+            # 3. 서비스 매니저 초기화
+            await self._service_manager.initialize()
 
-            # 4. 초기 데이터 동기화 완료 대기
-            logger.info("⏳ 초기 데이터 동기화 완료 대기 중...")
+            # 4. Notion 동기화 서비스 시작 (데이터 로딩)
+            sync_service = self._service_manager.get_service("sync")
+            if sync_service:
+                await sync_service.start_continuous_synchronization_monitor()
+
+            # 5. 초기 데이터 동기화 완료 대기
             await asyncio.sleep(5)  # 동기화 완료 대기
 
-            # 5. Discord 봇 초기화 (데이터 로딩 완료 후)
-            logger.info("🤖 Discord 봇 초기화 중...")
-            await self._discord_service.start_bot()
+            # 6. Discord 봇 초기화 (데이터 로딩 완료 후)
+            try:
+                discord_service = self._service_manager.get_service("discord")
+                await discord_service.start_bot()
+
+                # Discord 봇에 비즈니스 로직 콜백 설정
+                discord_service.set_command_callback(
+                    self._process_command_business_logic
+                )
+            except KeyError:
+                logger.warning("⚠️ Discord 서비스가 비활성화되어 있습니다.")
 
             # 6. MCP 관련 초기화 제거
             self._mcp_manager = None
             self._mcp_fallback_manager = None
 
-            # 8. Discord 봇에 비즈니스 로직 콜백 설정
-            self._discord_service.set_command_callback(
-                self._process_command_business_logic
-            )
-
             # 7. FastAPI 라우트 설정
-            logger.info("🌐 FastAPI 라우트 설정 중...")
             self._setup_web_routes()
 
             # 8. 글로벌 예외 핸들러 설정
             self._setup_exception_handlers()
 
             # 9. 자동 관리 작업 시작
-            logger.info("⚙️ 자동 관리 작업 시작 중...")
             await self._start_auto_tasks()
 
             # 10. 실시간 모니터링 시작
-            logger.info("📡 실시간 모니터링 시작 중...")
             await start_realtime_performance_monitoring()
 
             self.service_ready = True
@@ -219,30 +228,42 @@ class ServiceManager(IServiceManager):
 
             # Notion 동기화 서비스 종료
             logger.info("🔄 Notion 동기화 서비스 종료 중...")
-            await sync_service.stop_synchronization_monitor()
+            sync_service = self._service_manager.get_service("sync")
+            if sync_service:
+                await sync_service.stop_synchronization_monitor()
 
             # Discord 봇 종료 (HTTP 세션 정리 포함)
             logger.info("🤖 Discord 봇 종료 중...")
-            await self._discord_service.stop_bot()
-
-            # Discord 봇의 HTTP 세션 정리 (더 안전한 방법)
             try:
-                if (
-                    hasattr(self._discord_service.bot, "http")
-                    and self._discord_service.bot.http
-                ):
-                    await self._discord_service.bot.http.close()
-                    logger.debug("🔐 Discord HTTP 세션 정리 완료")
-            except Exception as session_cleanup_error:
-                logger.warning(
-                    f"⚠️ Discord HTTP 세션 정리 중 경고: {session_cleanup_error}"
-                )
+                discord_service = self._service_manager.get_service("discord")
+                await discord_service.stop_bot()
+
+                # Discord 봇의 HTTP 세션 정리 (더 안전한 방법)
+                try:
+                    if (
+                        hasattr(discord_service.bot, "http")
+                        and discord_service.bot.http
+                    ):
+                        await discord_service.bot.http.close()
+                        logger.debug("🔐 Discord HTTP 세션 정리 완료")
+                except Exception as session_cleanup_error:
+                    logger.warning(
+                        f"⚠️ Discord HTTP 세션 정리 중 경고: {session_cleanup_error}"
+                    )
+            except KeyError:
+                logger.warning("⚠️ Discord 서비스가 비활성화되어 있습니다.")
 
             # MongoDB 연결 종료
             logger.info("🗄️ MongoDB 연결 종료 중...")
-            await mongodb_connection.disconnect()
+            try:
+                disconnect_result = mongodb_connection.disconnect()
+                if disconnect_result is not None:
+                    await disconnect_result
+                logger.info("🗄️ MongoDB 연결 종료 완료")
+            except Exception as mongo_error:
+                logger.warning(f"⚠️ MongoDB 연결 종료 중 경고: {mongo_error}")
 
-            logger.info("👋 MeetupLoader 시스템 종료 완료")
+            logger.info("👋 DinoBot 시스템 종료 완료")
             return True
 
         except Exception as shutdown_error:
@@ -257,7 +278,11 @@ class ServiceManager(IServiceManager):
             mongo_response_time = 1.0  # 실제로는 ping 시간 측정
 
             # Discord 봇 상태 확인
-            discord_status = await self._discord_service.check_bot_status()
+            discord_status = (
+                await self.discord_service.check_bot_status()
+                if self.discord_service
+                else {"ready": False, "response_time": 0.0}
+            )
 
             # 업타임 계산
             uptime_seconds = (
@@ -270,38 +295,40 @@ class ServiceManager(IServiceManager):
             service_status_list = [
                 ServiceStatusDTO(
                     service_name="MongoDB",
-                    status=(
-                        "healthy"
-                        if mongodb_connection.connection_status
-                        else "critical"
-                    ),
+                    is_healthy=mongodb_connection.connection_status,
                     response_time_ms=mongo_response_time,
-                    additional_info={"uptime_seconds": uptime_seconds},
+                    error_message=(
+                        None
+                        if mongodb_connection.connection_status
+                        else "MongoDB connection failed"
+                    ),
                 ),
                 ServiceStatusDTO(
                     service_name="Discord Bot",
-                    status="healthy" if discord_status.get("ready") else "critical",
+                    is_healthy=discord_status.get("ready", False),
                     response_time_ms=discord_status.get("response_time", 0.0),
-                    additional_info=discord_status,
+                    error_message=(
+                        None if discord_status.get("ready") else "Discord bot not ready"
+                    ),
                 ),
             ]
 
             # MongoDB 상태 생성
             mongodb_status = MongoDBStatusDTO(
-                connected=mongodb_connection.connection_status,
+                is_connected=mongodb_connection.connection_status,
                 database_name="meetuploader",  # 실제 DB 이름
-                collection_count=0,  # 실제로는 db.list_collection_names() 호출
-                total_documents=0,  # 실제로는 각 컬렉션의 count() 합계
-                recent_error_count=0,  # 실제로는 메트릭에서 조회
+                collections_count=0,  # 실제로는 db.list_collection_names() 호출
             )
+
+            # 서비스 상태를 딕셔너리로 변환
+            services_dict = {
+                service.service_name: service for service in service_status_list
+            }
 
             return SystemStatusDTO(
                 status="healthy" if self.service_ready else "initializing",
-                current_time=datetime.now(settings.tz),
-                uptime_seconds=uptime_seconds,
-                total_processed_commands=0,  # 실제로는 메트릭에서 조회
-                total_webhook_calls=0,  # 실제로는 메트릭에서 조회
-                services=service_status_list,
+                uptime_seconds=int(uptime_seconds),
+                services=services_dict,
                 mongodb=mongodb_status,
             )
 
@@ -309,20 +336,15 @@ class ServiceManager(IServiceManager):
             logger.error(f"❌ 서비스 상태 확인 실패: {status_check_error}")
             # 에러 시 빈 서비스 리스트와 기본 MongoDB 상태
             mongodb_status = MongoDBStatusDTO(
-                connected=False,
+                is_connected=False,
                 database_name="meetuploader",
-                collection_count=0,
-                total_documents=0,
-                recent_error_count=1,
+                collections_count=0,
             )
 
             return SystemStatusDTO(
                 status="critical",
-                current_time=datetime.now(settings.tz),
-                uptime_seconds=0.0,
-                total_processed_commands=0,
-                total_webhook_calls=0,
-                services=[],
+                uptime_seconds=0,
+                services={},
                 mongodb=mongodb_status,
             )
 
@@ -339,12 +361,19 @@ class ServiceManager(IServiceManager):
     ) -> DiscordMessageResponseDTO:
         """디스코드 명령어의 비즈니스 로직 처리"""
         try:
+            # 워크플로우 서비스를 통한 명령어 처리
             if request.command_type == CommandType.TASK:
-                return await self._task_creation_workflow(request)
+                task_service = self._service_manager.get_workflow_service("task")
+                return await task_service.create_task(request)
             elif request.command_type == CommandType.MEETING:
-                return await self._meeting_creation_workflow(request)
+                meeting_service = self._service_manager.get_workflow_service("meeting")
+                return await meeting_service.create_meeting(request)
             elif request.command_type == CommandType.DOCUMENT:
-                return await self._document_creation_workflow(request)
+                document_service = self._service_manager.get_workflow_service(
+                    "document"
+                )
+                return await document_service.create_document(request)
+            # 기존 워크플로우들은 기존 메서드 유지
             elif request.command_type == CommandType.STATUS:
                 return await self._status_check_workflow(request)
             elif request.command_type == CommandType.FETCH_PAGE:
@@ -436,7 +465,36 @@ class ServiceManager(IServiceManager):
                     except:
                         due_date = datetime.now() + timedelta(days=7)
                 elif not due_date:
-                    due_date = datetime.now() + timedelta(days=7)
+                    # 기본값: 오늘 마감
+                    due_date = datetime.now().replace(
+                        hour=23, minute=59, second=59, microsecond=0
+                    )
+
+                # Due date 지표 생성
+                def get_due_date_indicator(due_date: datetime) -> str:
+                    """마감일 지표와 설명 반환"""
+                    now = datetime.now()
+                    today = now.date()
+                    tomorrow = (now + timedelta(days=1)).date()
+                    due_date_only = due_date.date()
+
+                    if due_date_only == today:
+                        return "🔴 **오늘 마감**"
+                    elif due_date_only == tomorrow:
+                        return "🟡 **내일 마감**"
+                    elif due_date_only < today:
+                        days_overdue = (today - due_date_only).days
+                        return f"⚫ **{days_overdue}일 지연**"
+                    else:
+                        days_remaining = (due_date_only - today).days
+                        if days_remaining <= 3:
+                            return f"🟠 **{days_remaining}일 남음**"
+                        elif days_remaining <= 7:
+                            return f"🟢 **{days_remaining}일 남음**"
+                        else:
+                            return f"🔵 **{days_remaining}일 남음**"
+
+                due_date_indicator = get_due_date_indicator(due_date)
 
                 notion_result = await self._notion_service.create_factory_task(
                     task_name=task_request.task_name,
@@ -512,11 +570,14 @@ class ServiceManager(IServiceManager):
                 )
 
             # 4. 성공 응답 생성
+            formatted_due_date = due_date.strftime("%Y-%m-%d %H:%M")
+            page_url = notion_result.get("url", "https://notion.so")
             response_content = (
                 f"✅ **태스크 생성 완료**\n"
-                f"👤 **assignee**: `{task_request.assignee}`\n"
-                f"📝 **title**: `{base_title}` → `{task_request.task_name}`\n"
-                f"⚡ **priority**: `{task_request.priority}`\n"
+                f"👤 **담당자**: `{task_request.assignee}`\n"
+                f"📝 **제목**: `{base_title}` → `{task_request.task_name}`\n"
+                f"⚡ **우선순위**: `{task_request.priority}`\n"
+                f"📅 **마감일**: `{formatted_due_date}` {due_date_indicator}\n"
                 f"🔗 **노션 링크**: {page_url}\n\n"
                 f"📢 스레드에 알림이 전송되었습니다!"
             )
@@ -547,12 +608,26 @@ class ServiceManager(IServiceManager):
         try:
             # 1. 필수 파라미터 검증
             base_title = request.parameters.get("title")
+            meeting_time = request.parameters.get("meeting_date")
             participants = request.parameters.get("participants", [])
 
             if not base_title:
                 return DiscordMessageResponseDTO(
                     message_type=MessageType.ERROR_NOTIFICATION,
                     content="❌ 회의록 제목이 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            if not meeting_time:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 회의 시간이 필요합니다.\n"
+                    "📝 사용 예시:\n"
+                    "• 오늘 16:30\n"
+                    "• 내일 14:00\n"
+                    "• 2024-12-25 14:00\n"
+                    "• 12/25 14:00\n"
+                    "• 16:30 (오늘)",
                     is_ephemeral=True,
                 )
 
@@ -595,6 +670,9 @@ class ServiceManager(IServiceManager):
                     participants=meeting_request.attendees,
                 )
 
+                # 페이지 URL 추출
+                page_url = notion_result.get("url", "https://notion.so")
+
                 # 3. 생성된 페이지 정보를 데이터베이스에 저장
                 try:
                     await save_notion_page(
@@ -612,7 +690,138 @@ class ServiceManager(IServiceManager):
                 except Exception as save_error:
                     logger.warning(f"⚠️ 페이지 정보 저장 실패 (계속 진행): {save_error}")
 
-            # 3. 당일 스레드에 안내 메시지 전송
+            # 3. Discord 이벤트 생성 (회의 일정이 있는 경우)
+            meeting_date_str = request.parameters.get("meeting_date")
+            discord_event_created = False
+            if meeting_date_str:
+                try:
+                    # 문자열 날짜를 datetime 객체로 변환
+                    from datetime import datetime, timedelta
+
+                    meeting_datetime = None
+                    now = datetime.now()
+
+                    # 1. 상대적 날짜 표현 처리
+                    if "오늘" in meeting_date_str:
+                        time_part = meeting_date_str.replace("오늘", "").strip()
+                        if time_part:
+                            # 시간이 있는 경우 (예: "오늘 16:30")
+                            try:
+                                time_obj = datetime.strptime(time_part, "%H:%M").time()
+                                meeting_datetime = now.replace(
+                                    hour=time_obj.hour,
+                                    minute=time_obj.minute,
+                                    second=0,
+                                    microsecond=0,
+                                )
+                            except ValueError:
+                                meeting_datetime = now.replace(
+                                    hour=14, minute=0, second=0, microsecond=0
+                                )
+                        else:
+                            meeting_datetime = now.replace(
+                                hour=14, minute=0, second=0, microsecond=0
+                            )
+
+                    elif "내일" in meeting_date_str:
+                        time_part = meeting_date_str.replace("내일", "").strip()
+                        tomorrow = now + timedelta(days=1)
+                        if time_part:
+                            try:
+                                time_obj = datetime.strptime(time_part, "%H:%M").time()
+                                meeting_datetime = tomorrow.replace(
+                                    hour=time_obj.hour,
+                                    minute=time_obj.minute,
+                                    second=0,
+                                    microsecond=0,
+                                )
+                            except ValueError:
+                                meeting_datetime = tomorrow.replace(
+                                    hour=14, minute=0, second=0, microsecond=0
+                                )
+                        else:
+                            meeting_datetime = tomorrow.replace(
+                                hour=14, minute=0, second=0, microsecond=0
+                            )
+
+                    # 2. 절대적 날짜 형식 처리
+                    else:
+                        date_formats = [
+                            "%Y-%m-%d %H:%M",  # 2024-12-25 14:00
+                            "%Y/%m/%d %H:%M",  # 2024/12/25 14:00
+                            "%m/%d %H:%M",  # 12/25 14:00 (현재 년도)
+                            "%Y-%m-%d",  # 2024-12-25 (기본 시간: 14:00)
+                            "%Y/%m/%d",  # 2024/12/25 (기본 시간: 14:00)
+                            "%m/%d",  # 12/25 (현재 년도, 기본 시간: 14:00)
+                            "%H:%M",  # 16:30 (오늘)
+                        ]
+
+                        for fmt in date_formats:
+                            try:
+                                if fmt == "%H:%M":
+                                    # 시간만 있는 경우 오늘 날짜에 적용
+                                    time_obj = datetime.strptime(
+                                        meeting_date_str, fmt
+                                    ).time()
+                                    meeting_datetime = now.replace(
+                                        hour=time_obj.hour,
+                                        minute=time_obj.minute,
+                                        second=0,
+                                        microsecond=0,
+                                    )
+                                else:
+                                    parsed_date = datetime.strptime(
+                                        meeting_date_str, fmt
+                                    )
+                                    # 년도가 없는 형식인 경우 현재 년도 사용
+                                    if fmt in ["%m/%d %H:%M", "%m/%d"]:
+                                        parsed_date = parsed_date.replace(year=now.year)
+                                    # 시간이 없는 형식인 경우 14:00으로 기본 설정
+                                    if fmt in ["%Y-%m-%d", "%Y/%m/%d", "%m/%d"]:
+                                        parsed_date = parsed_date.replace(
+                                            hour=14, minute=0
+                                        )
+                                    meeting_datetime = parsed_date
+                                break
+                            except ValueError:
+                                continue
+
+                    if meeting_datetime:
+                        # Discord 이벤트 생성
+                        event_title = f"📝 {meeting_request.title}"
+                        event_description = (
+                            f"회의 유형: {meeting_request.meeting_type}\n"
+                            f"참석자: {', '.join(meeting_request.attendees)}\n\n"
+                            f"노션 페이지: {page_url}"
+                        )
+
+                        discord_event_created = (
+                            await self._discord_service.create_discord_event(
+                                title=event_title,
+                                description=event_description,
+                                start_time=meeting_datetime,
+                                duration_hours=1,
+                                voice_channel_name="내 회의실",
+                            )
+                        )
+
+                        if discord_event_created:
+                            logger.info(f"✅ Discord 이벤트 생성 완료: {event_title}")
+                        else:
+                            logger.warning(f"⚠️ Discord 이벤트 생성 실패: {event_title}")
+
+                    else:
+                        logger.warning(
+                            f"⚠️ 날짜 형식을 인식할 수 없습니다: {meeting_date_str}"
+                        )
+                        # 날짜 형식이 잘못된 경우에도 회의록 생성은 계속하되 이벤트만 생성하지 않음
+
+                except Exception as event_error:
+                    logger.warning(
+                        f"⚠️ Discord 이벤트 생성 실패 (계속 진행): {event_error}"
+                    )
+
+            # 4. 당일 스레드에 안내 메시지 전송
             channel_id = request.guild.channel_id or settings.default_discord_channel_id
             if channel_id:
                 try:
@@ -630,10 +839,10 @@ class ServiceManager(IServiceManager):
                 except Exception as thread_error:
                     logger.warning(f"⚠️ 스레드 메시지 전송 실패: {thread_error}")
 
-            # 4. 성공 응답 생성
+            # 5. 성공 응답 생성
             response_content = (
                 f"✅ **회의록 생성 완료**\n"
-                f"📝 **title**: `{base_title}` → `{meeting_request.title}`\n"
+                f"📝 **제목**: `{base_title}` → `{meeting_request.title}`\n"
                 f"🏷️ **유형**: `{meeting_request.meeting_type}`\n"
                 f"🔗 **노션 링크**: {page_url}\n\n"
                 f"📝 당일 스레드에 작성 가이드를 전송했습니다."
@@ -642,6 +851,18 @@ class ServiceManager(IServiceManager):
             if meeting_request.attendees:
                 participants_string = ", ".join(meeting_request.attendees)
                 response_content += f"\n👥 **참석자**: `{participants_string}`"
+
+            # Discord 이벤트 생성 결과 추가
+            if meeting_date_str:
+                response_content += f"\n🎯 **회의 일정**: `{meeting_date_str}`"
+                if discord_event_created:
+                    response_content += (
+                        f"\n📅 Discord 이벤트가 '내 회의실' 음성 채널에 생성되었습니다."
+                    )
+                else:
+                    response_content += (
+                        f"\n⚠️ Discord 이벤트 생성에 실패했습니다. (날짜 형식 확인 필요)"
+                    )
 
             return DiscordMessageResponseDTO(
                 message_type=MessageType.COMMAND_RESPONSE,
@@ -694,6 +915,9 @@ class ServiceManager(IServiceManager):
                 notion_result = await self._notion_service.create_document_page(
                     title=unique_title, doc_type=doc_type
                 )
+
+                # 페이지 URL 추출
+                page_url = notion_result.get("url", "https://notion.so")
 
                 # 생성된 페이지 정보를 데이터베이스에 저장
                 try:
@@ -987,7 +1211,7 @@ class ServiceManager(IServiceManager):
             )
 
             status_message = (
-                f"🤖 **MeetupLoader 시스템 상태**\n\n"
+                f"🤖 **DinoBot 시스템 상태**\n\n"
                 f"📊 **최근 1시간 통계**\n"
                 f"• 명령어 실행: `{total_commands}회`\n"
                 f"• 평균 성공률: `{average_success_rate:.1f}%`\n"
@@ -1118,8 +1342,13 @@ class ServiceManager(IServiceManager):
             return {
                 "status": status_info.status,
                 "uptime_seconds": status_info.uptime_seconds,
-                "services": [service.dict() for service in status_info.services],
-                "mongodb": status_info.mongodb.dict(),
+                "services": {
+                    name: service.model_dump()
+                    for name, service in status_info.services.items()
+                },
+                "mongodb": (
+                    status_info.mongodb.model_dump() if status_info.mongodb else None
+                ),
                 "mcp": {"mcp_enabled": False, "fallback_count": 0},
             }
 
@@ -1146,6 +1375,7 @@ class ServiceManager(IServiceManager):
         async def sync_status():
             """Notion 동기화 상태 확인"""
             try:
+                sync_service = self._service_manager.get_service("sync")
                 status = await sync_service.get_sync_status()
                 return status
             except Exception as sync_error:
@@ -1158,6 +1388,7 @@ class ServiceManager(IServiceManager):
         async def manual_sync():
             """수동 동기화 실행"""
             try:
+                sync_service = self._service_manager.get_service("sync")
                 result = await sync_service.manual_sync()
                 return result
             except Exception as sync_error:
@@ -1315,7 +1546,7 @@ class ServiceManager(IServiceManager):
         weekly_backup_task = asyncio.create_task(self._weekly_backup_scheduler())
         self.auto_tasks.append(weekly_backup_task)
 
-        logger.info("⚙️ 백그라운드 자동 작업 시작 완료")
+        # 백그라운드 자동 작업 시작 완료 (로그 제거)
 
     async def _daily_cleanup_scheduler(self):
         """일일 데이터 정리 스케줄러"""
@@ -1344,10 +1575,12 @@ class ServiceManager(IServiceManager):
     async def run_service(self):
         """Discord 봇과 FastAPI server를 동시에 실행"""
         try:
-            # Discord 봇을 백그라운드 태스크로 실행
-            bot_task = asyncio.create_task(
-                self._discord_service.bot.start(settings.discord_token)
-            )
+            # Discord 봇을 백그라운드 태스크로 실행 (discord 서비스가 있는 경우에만)
+            bot_task = None
+            if self.discord_service:
+                bot_task = asyncio.create_task(
+                    self.discord_service.bot.start(settings.discord_token)
+                )
 
             # FastAPI server 실행 (메인 스레드)
             config = uvicorn.Config(
@@ -1355,11 +1588,35 @@ class ServiceManager(IServiceManager):
                 host=settings.host,
                 port=settings.port,
                 log_config=None,  # 우리의 logger 시스템 사용
+                log_level="warning",  # uvicorn 로그 레벨을 warning으로 설정
+                access_log=False,  # 액세스 로그 비활성화 (너무 많은 로그 방지)
             )
             server = uvicorn.Server(config)
 
             logger.info(f"🌐 FastAPI server 시작: {settings.host}:{settings.port}")
-            logger.info("🚀 MeetupLoader 서비스 실행 중...")
+
+            # 서버 시작 진행률 표시
+            logger.info("🔄 [░░░░░░░░░░░░░░░░░░░░] 0% 서버 초기화 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [██░░░░░░░░░░░░░░░░░░] 10% 서버 설정 완료...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [████░░░░░░░░░░░░░░░░] 20% 라우트 등록 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [██████░░░░░░░░░░░░░░] 30% 미들웨어 설정 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [████████░░░░░░░░░░░░] 40% 서버 바인딩 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [██████████░░░░░░░░░░] 50% 서버 준비 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [████████████░░░░░░░░] 60% 서버 시작 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [██████████████░░░░░░] 70% 서버 활성화 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [████████████████░░░░] 80% 서버 대기 중...")
+            await asyncio.sleep(0.1)
+            logger.info("🔄 [██████████████████░░] 90% 서버 준비 완료...")
+            await asyncio.sleep(0.1)
+            logger.info("✅ [████████████████████] 100% DinoBot 서비스 실행 중...")
 
             # server 실행
             await server.serve()
@@ -1393,6 +1650,7 @@ class ServiceManager(IServiceManager):
 
             if chart_enabled:
                 # 기존 분석 서비스를 통한 통계 생성 (차트 포함)
+                analytics_service = self._service_manager.get_service("analytics")
                 result = await analytics_service.get_stats_with_chart(
                     analytics_service.get_daily_stats,
                     target_date,
@@ -1428,6 +1686,7 @@ class ServiceManager(IServiceManager):
                     )
             else:
                 # 기존 분석 서비스를 통한 텍스트 통계 생성
+                analytics_service = self._service_manager.get_service("analytics")
                 result = await analytics_service.get_daily_stats(target_date)
 
                 if result.get("success"):
@@ -1456,6 +1715,7 @@ class ServiceManager(IServiceManager):
         """주별 통계 워크플로우"""
         try:
             # 기존 분석 서비스를 통한 주별 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_weekly_stats()
 
             if result.get("success"):
@@ -1487,6 +1747,7 @@ class ServiceManager(IServiceManager):
             month = request.parameters.get("month")
 
             # 기존 분석 서비스를 통한 월별 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_monthly_stats(year, month)
 
             if result.get("success"):
@@ -1518,6 +1779,7 @@ class ServiceManager(IServiceManager):
             user_id = str(request.user.user_id)
 
             # 기존 분석 서비스를 통한 사용자 생산성 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_user_productivity_stats(user_id, days)
 
             if result.get("success"):
@@ -1548,6 +1810,7 @@ class ServiceManager(IServiceManager):
             days = request.parameters.get("days", 30)
 
             # 기존 분석 서비스를 통한 팀 비교 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_team_comparison_stats(days)
 
             if result.get("success"):
@@ -1578,6 +1841,7 @@ class ServiceManager(IServiceManager):
             days = request.parameters.get("days", 14)
 
             # 기존 분석 서비스를 통한 활동 트렌드 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_activity_trends_stats(days)
 
             if result.get("success"):
@@ -1608,6 +1872,7 @@ class ServiceManager(IServiceManager):
             days = request.parameters.get("days", 30)
 
             # 기존 분석 서비스를 통한 태스크 완료 통계 생성
+            analytics_service = self._service_manager.get_service("analytics")
             result = await analytics_service.get_task_completion_stats(days)
 
             if result.get("success"):
@@ -1648,6 +1913,7 @@ class ServiceManager(IServiceManager):
                 )
 
             # 기존 검색 서비스를 통한 검색 실행
+            search_service = self._service_manager.get_service("search")
             result = await search_service.search_pages(
                 query=query,
                 page_type=page_type or "both",
@@ -1684,6 +1950,10 @@ class ServiceManager(IServiceManager):
         return await self.shutdown_system()
 
 
+# 전역 애플리케이션 인스턴스
+app = ServiceManager()
+
+
 async def main():
     """메인 진입점"""
     # 로깅 시스템 초기화
@@ -1692,11 +1962,8 @@ async def main():
     # 메트릭 수집기 초기화
     metrics_collector = get_metrics_collector()
     metrics_collector.start_metrics_server(port=9090)
-    logger.info("📊 Prometheus 메트릭 서버 시작됨")
 
-    # 애플리케이션 인스턴스 생성 및 실행
-    app = ServiceManager()
-
+    # 전역 애플리케이션 인스턴스 사용
     try:
         await app.initialize_system()
         await app.run_service()

@@ -1,6 +1,6 @@
 # 📖 API 문서
 
-**MeetupLoader의 REST API 엔드포인트를 상세히 안내합니다.**
+**DinoBot의 REST API 엔드포인트를 상세히 안내합니다.**
 
 ## 🔗 기본 정보
 
@@ -564,8 +564,8 @@ curl -X POST https://meetuploader.fly.dev/tasks \
 ```json
 {
   "info": {
-    "name": "MeetupLoader API",
-    "description": "MeetupLoader REST API 컬렉션"
+    "name": "DinoBot API",
+    "description": "DinoBot REST API 컬렉션"
   },
   "item": [
     {

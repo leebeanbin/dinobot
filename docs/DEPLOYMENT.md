@@ -1,6 +1,6 @@
 # 🚀 배포 가이드
 
-**MeetupLoader를 프로덕션 환경에 배포하는 방법을 안내합니다.**
+**DinoBot를 프로덕션 환경에 배포하는 방법을 안내합니다.**
 
 ## 📋 배포 옵션
 
@@ -259,7 +259,7 @@ poetry run python run.py
 ```ini
 # /etc/systemd/system/meetuploader.service
 [Unit]
-Description=MeetupLoader Bot
+Description=DinoBot Bot
 After=network.target
 
 [Service]
@@ -523,4 +523,4 @@ watch -n 1 'ps aux --sort=-%mem | head -5'
 
 ---
 
-**배포가 완료되었습니다! 이제 MeetupLoader를 프로덕션에서 사용할 수 있습니다.** 🎉
+**배포가 완료되었습니다! 이제 DinoBot를 프로덕션에서 사용할 수 있습니다.** 🎉

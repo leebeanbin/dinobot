@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**MeetupLoader의 모니터링 시스템 완전 가이드**
+**DinoBot의 모니터링 시스템 완전 가이드**
 
 [![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-red.svg?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-Dashboard-orange.svg?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
@@ -14,7 +14,7 @@
 
 ## 🎯 모니터링 개요
 
-MeetupLoader는 **Prometheus**와 **Grafana**를 사용하여 실시간 모니터링을 제공합니다.
+DinoBot는 **Prometheus**와 **Grafana**를 사용하여 실시간 모니터링을 제공합니다.
 
 ### 📈 수집되는 메트릭
 

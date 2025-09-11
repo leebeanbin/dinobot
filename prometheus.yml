@@ -8,9 +8,9 @@ rule_files:
 
 scrape_configs:
   # MeetupLoader 애플리케이션 메트릭
-  - job_name: 'meetuploader'
+  - job_name: 'dinobot'
     static_configs:
-      - targets: ['meetuploader:9090']
+      - targets: ['dinobot:9090']
     scrape_interval: 5s
     metrics_path: /metrics
 

@@ -10,7 +10,10 @@
       "Bash(git push:*)",
       "Bash(poetry install:*)",
       "Bash(poetry run:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(tree:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
