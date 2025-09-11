@@ -2,7 +2,7 @@
   "dashboard": {
     "id": null,
     "title": "MeetupLoader Overview",
-    "tags": ["meetuploader", "overview"],
+    "tags": ["dinobot", "overview"],
     "style": "dark",
     "timezone": "browser",
     "panels": [

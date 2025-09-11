@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MeetupLoader 배포 상태 확인 스크립트
+# DinoBot 배포 상태 확인 스크립트
 
-echo "🔍 MeetupLoader 배포 상태 확인 중..."
+echo "🔍 DinoBot 배포 상태 확인 중..."
 
 # Fly.io 앱 이름 (환경 변수에서 가져오거나 기본값 사용)
 APP_NAME=${FLY_APP_NAME:-meetuploader}

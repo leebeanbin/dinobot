@@ -55,11 +55,11 @@ RUN mkdir -p logs && chown -R dinobot:dinobot /app
 USER dinobot
 
 # 포트 노출 (환경변수로 설정 가능)
-EXPOSE 8888
+EXPOSE 8889
 
 # 헬스체크 설정
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8888}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8889}/health || exit 1
 
 # 애플리케이션 실행
 CMD ["python", "run.py"]

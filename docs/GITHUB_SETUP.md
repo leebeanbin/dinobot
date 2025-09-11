@@ -86,7 +86,7 @@ fly secrets set TIMEZONE="Asia/Seoul"
 ./scripts/start-dev.sh
 
 # 접속 정보:
-# - MeetupLoader: http://localhost:8888
+# - DinoBot: http://localhost:8888
 # - Grafana: http://localhost:3000 (admin/admin123)
 # - Prometheus: http://localhost:9091
 ```

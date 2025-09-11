@@ -1,8 +1,8 @@
-# 📚 MeetupLoader 문서
+# 📚 DinoBot 문서
 
 <div align="center">
 
-**MeetupLoader의 모든 문서를 한 곳에서 확인하세요**
+**DinoBot의 모든 문서를 한 곳에서 확인하세요**
 
 [![문서](https://img.shields.io/badge/문서-완전한_가이드-blue.svg?style=for-the-badge)](https://github.com/your-repo/meetupLoader)
 [![버전](https://img.shields.io/badge/버전-1.0.0-green.svg?style=for-the-badge)](https://github.com/your-repo/meetupLoader)
@@ -15,7 +15,7 @@
 ## 🚀 빠른 시작
 
 ### [QUICK_START.md](./QUICK_START.md)
-**5분 만에 MeetupLoader를 시작하세요!**
+**5분 만에 DinoBot를 시작하세요!**
 
 - ✅ 환경 설정
 - ✅ 의존성 설치
@@ -69,7 +69,7 @@
 ### 시스템 구조
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Discord Bot   │◄──►│  MeetupLoader   │◄──►│   Notion API    │
+│   Discord Bot   │◄──►│  DinoBot   │◄──►│   Notion API    │
 │                 │    │                 │    │                 │
 │ • Slash Commands│    │ • FastAPI       │    │ • Page Creation │
 │ • Threads       │    │ • MongoDB       │    │ • Content Sync  │

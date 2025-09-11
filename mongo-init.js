@@ -1,5 +1,5 @@
 // MongoDB 초기화 스크립트
-db = db.getSiblingDB('meetuploader');
+db = db.getSiblingDB('dinobot');
 
 // 컬렉션 생성 및 인덱스 설정
 db.createCollection('notion_pages');

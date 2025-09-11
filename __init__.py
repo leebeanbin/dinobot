@@ -1,1 +1,1 @@
-# MeetupLoader package
+# DinoBot package

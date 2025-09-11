@@ -1,6 +1,6 @@
 # 🚀 빠른 시작 가이드
 
-**5분 만에 MeetupLoader를 시작하세요!**
+**5분 만에 DinoBot를 시작하세요!**
 
 ## 📋 사전 준비
 
@@ -84,7 +84,7 @@ poetry run python run.py
 ### 1. 통합 생성
 1. [Notion 통합](https://www.notion.so/my-integrations) 접속
 2. "New integration" 클릭
-3. 이름 입력 (예: "MeetupLoader Bot")
+3. 이름 입력 (예: "DinoBot Bot")
 4. 워크스페이스 선택
 5. "Submit" 클릭
 6. 토큰 복사
@@ -156,4 +156,4 @@ poetry run python run.py
 
 ---
 
-**축하합니다! MeetupLoader가 성공적으로 설정되었습니다!** 🎉
+**축하합니다! DinoBot가 성공적으로 설정되었습니다!** 🎉
