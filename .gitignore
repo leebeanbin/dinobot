@@ -71,3 +71,6 @@ npm-debug.log*
 # Charts and temporary images
 charts/
 temp_charts/
+
+# Claude Code settings
+.claude/
