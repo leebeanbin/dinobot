@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DinoBot 설정</title>
+    <style>
+        /* 실제 관찰한 사이트들의 색상과 스타일 적용 */
+        
+        /* Apple 스타일 기본 변수 */
+        :root {
+            /* Main Brand Color - Consistent Purple Theme */
+            --primary-color: #5865f2;
+            --primary-dark: #4752c4;
+            --primary-light: #7289da;
+            --primary-bg: #f7f8ff;
+            --primary-border: #e3e7ff;
+            --primary-text: #ffffff;
+            
+            /* Apple Colors */
+            --apple-white: #ffffff;
+            --apple-gray-50: #f9fafb;
+            --apple-gray-100: #f3f4f6;
+            --apple-gray-200: #e5e7eb;
+            --apple-gray-300: #d1d5db;
+            --apple-gray-400: #9ca3af;
+            --apple-gray-500: #6b7280;
+            --apple-gray-600: #4b5563;
+            --apple-gray-700: #374151;
+            --apple-gray-800: #1f2937;
+            --apple-gray-900: #111827;
+            
+            /* Discord Colors - Using primary color */
+            --discord-blurple: var(--primary-color);
+            --discord-dark: #36393f;
+            --discord-darker: #2f3136;
+            --discord-darkest: #202225;
+            --discord-green: #3ba55d;
+            
+            /* Notion Colors */
+            --notion-gray: #37352f;
+            --notion-light-gray: #f7f6f3;
+            --notion-border: #e9e9e7;
+            
+            /* CodeIt Colors - Using primary color */
+            --codeit-orange: #ff6b35;
+            --codeit-blue: var(--primary-color);
+            --codeit-green: #0d9488;
+            
+            /* Shadows - Apple style */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        /* Apple-style typography */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+            background: #f8fafc;
+            color: var(--apple-gray-900);
+            line-height: 1.5;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: auto;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 70%, rgba(88, 101, 242, 0.08) 0%, transparent 60%),
+                        radial-gradient(circle at 70% 30%, rgba(168, 85, 247, 0.06) 0%, transparent 60%),
+                        linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(147, 51, 234, 0.03) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Apple-style header */
+        .header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--apple-gray-900);
+            margin: 0 0 12px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 17px;
+            color: var(--apple-gray-600);
+            margin: 0 0 32px 0;
+        }
+
+        .dino-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        /* CodeIt-style progress */
+        .progress-section {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: white;
+            padding: 28px;
+            border-radius: 20px;
+            margin-bottom: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.2);
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .progress-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-circle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: scale(0.9);
+        }
+
+        .progress-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotate(0deg);
+            transition: transform 0.5s ease;
+        }
+
+        .progress-circle[data-progress="0"]::after {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        .progress-circle[data-progress="25"]::after {
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .progress-circle[data-progress="50"]::after {
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        .progress-circle[data-progress="75"]::after {
+            transform: translate(-50%, -50%) rotate(270deg);
+        }
+
+        .progress-circle[data-progress="100"]::after {
+            border-color: var(--primary-color);
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+
+        .progress-text {
+            flex: 1;
+        }
+
+        .progress-text h3 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .progress-text p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        /* Notion-style step indicators */
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 24px 0;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--apple-gray-500);
+        }
+
+        .step.active {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .step.completed {
+            color: var(--discord-green);
+            font-weight: 500;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--apple-gray-300);
+        }
+
+        .step.active .step-dot {
+            background: var(--primary-color);
+            animation: pulse 2s infinite;
+        }
+
+        .step.completed .step-dot {
+            background: var(--discord-green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+            width: 100%;
+            max-width: none;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        /* Apple-style sidebar */
+        .sidebar {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+            padding: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--apple-gray-900);
+            margin: 0 0 16px 0;
+        }
+
+        .quick-links {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+
+        .quick-links li {
+            margin-bottom: 8px;
+        }
+
+        .quick-links a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--apple-gray-700);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .quick-links a:hover {
+            background: var(--apple-gray-100);
+            color: var(--apple-gray-900);
+        }
+
+        .quick-links .icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Status indicators */
+        .status-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .status-item .label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--apple-gray-700);
+        }
+
+        .status-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--apple-gray-300);
+        }
+
+        .status-icon.completed {
+            background: var(--discord-green);
+            position: relative;
+        }
+
+        .status-icon.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* Discord-style config cards */
+        .config-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .config-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+        
+        .config-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .config-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+            border-color: rgba(88, 101, 242, 0.2);
+        }
+        
+        .config-card:hover::before {
+            opacity: 1;
+        }
+
+        .config-card.completed {
+            border-color: var(--discord-green);
+            background: linear-gradient(135deg, #f0fdf4 0%, var(--apple-white) 100%);
+        }
+
+        .card-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--apple-gray-200);
+            background: var(--apple-gray-50);
+        }
+
+        .card-header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+
+        .card-icon.discord {
+            background: linear-gradient(135deg, var(--primary-color), #7289da);
+            box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+        }
+
+        .card-icon.notion {
+            background: linear-gradient(135deg, #37352f, #6b7280);
+            box-shadow: 0 4px 12px rgba(55, 53, 47, 0.3);
+        }
+
+        .card-icon.security {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .card-info h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--apple-gray-900);
+            margin: 0 0 4px 0;
+        }
+
+        .card-info p {
+            font-size: 14px;
+            color: var(--apple-gray-600);
+            margin: 0;
+        }
+
+        .card-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.required {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--discord-green);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-check.pending {
+            background: var(--apple-gray-300);
+            color: var(--apple-gray-600);
+        }
+
+        /* Form styles */
+        .card-body {
+            padding: 24px;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .form-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--apple-gray-900);
+            margin-bottom: 6px;
+        }
+
+        .form-label .required {
+            color: var(--codeit-orange);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 160px 12px 16px;
+            border: 1px solid var(--apple-gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            background: var(--apple-white);
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+        }
+
+        .form-input.valid {
+            border-color: var(--discord-green);
+            background: #f0fdf4;
+        }
+
+        .form-input.invalid {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-actions {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 6px;
+            background: var(--apple-white);
+            padding: 2px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 6px;
+            background: var(--primary-bg);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            border: 1px solid var(--primary-border);
+        }
+
+        .input-btn:hover {
+            background: var(--primary-color);
+            color: var(--primary-text);
+            transform: scale(1.05);
+        }
+
+        .validation-icon {
+            position: absolute;
+            right: 140px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            background: var(--apple-white);
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .validation-icon.valid {
+            color: var(--discord-green);
+        }
+
+        .validation-icon.invalid {
+            color: #ef4444;
+        }
+
+        .validation-icon.loading {
+            color: var(--discord-blurple);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: translateY(-50%) rotate(0deg); }
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: var(--apple-gray-500);
+            margin-top: 4px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* Notion-style guide section */
+        .guide-section {
+            background: var(--notion-light-gray);
+            border: 1px solid var(--notion-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .guide-section h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--notion-gray);
+            margin: 0 0 16px 0;
+        }
+
+        .guide-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .guide-step {
+            text-align: center;
+        }
+
+        .guide-step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--discord-blurple);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin: 0 auto 8px;
+        }
+
+        .guide-step h5 {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--apple-gray-900);
+            margin: 0 0 4px 0;
+        }
+
+        .guide-step p {
+            font-size: 12px;
+            color: var(--apple-gray-600);
+            margin: 0;
+        }
+
+        /* Action buttons */
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--primary-text);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--apple-white);
+            color: var(--apple-gray-700);
+            border: 1px solid var(--apple-gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--apple-gray-50);
+            border-color: var(--apple-gray-400);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--apple-white);
+            border: 1px solid var(--apple-gray-200);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: var(--shadow-lg);
+            max-width: 320px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-color: var(--discord-green);
+            background: #f0fdf4;
+        }
+
+        .notification.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .notification-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .notification.success .notification-icon {
+            background: var(--discord-green);
+        }
+
+        .notification.error .notification-icon {
+            background: #ef4444;
+        }
+
+        .notification-text h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 2px 0;
+        }
+
+        .notification-text p {
+            font-size: 12px;
+            color: var(--apple-gray-600);
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                order: 2;
+                position: static;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .guide-steps {
+                grid-template-columns: 1fr;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <span class="dino-icon">🦕</span>
+            <h1>DinoBot 설정</h1>
+            <p>Discord와 Notion을 연결하는 스마트 봇을 설정합니다</p>
+            
+            <!-- Progress -->
+            <div class="progress-section">
+                <div class="progress-container">
+                    <div class="progress-circle" data-progress="{{ "%.0f"|format((configured_configs / total_configs * 100) if total_configs > 0 else 0) }}">
+                        <span>{{ "%.0f"|format((configured_configs / total_configs * 100) if total_configs > 0 else 0) }}%</span>
+                    </div>
+                    <div class="progress-text">
+                        <h3>설정 진행률</h3>
+                        <p>{{ configured_configs }}/{{ total_configs }} 항목 완료</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Steps -->
+            <div class="steps">
+                <div class="step {% if config.discord_token %}completed{% else %}active{% endif %}">
+                    <span class="step-dot"></span>
+                    Discord
+                </div>
+                <div class="step {% if config.notion_token %}completed{% elif config.discord_token %}active{% else %}{% endif %}">
+                    <span class="step-dot"></span>
+                    Notion
+                </div>
+                <div class="step {% if config.webhook_secret %}completed{% elif config.notion_token %}active{% else %}{% endif %}">
+                    <span class="step-dot"></span>
+                    보안
+                </div>
+                <div class="step {% if configured_configs == total_configs %}completed{% elif config.webhook_secret %}active{% else %}{% endif %}">
+                    <span class="step-dot"></span>
+                    완료
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <h3>빠른 가이드</h3>
+                <ul class="quick-links">
+                    <li>
+                        <a href="https://discord.com/developers/applications" target="_blank">
+                            <span class="icon">🎮</span>
+                            Discord 개발자 포털
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.notion.so/my-integrations" target="_blank">
+                            <span class="icon">📝</span>
+                            Notion 통합 설정
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/docs" target="_blank">
+                            <span class="icon">📚</span>
+                            문서 보기
+                        </a>
+                    </li>
+                </ul>
+
+                <h3>설정 상태</h3>
+                <ul class="status-list">
+                    <li class="status-item">
+                        <span class="label">
+                            <span class="status-icon {% if config.discord_token %}completed{% endif %}"></span>
+                            Discord 연동
+                        </span>
+                    </li>
+                    <li class="status-item">
+                        <span class="label">
+                            <span class="status-icon {% if config.notion_token %}completed{% endif %}"></span>
+                            Notion 연동
+                        </span>
+                    </li>
+                    <li class="status-item">
+                        <span class="label">
+                            <span class="status-icon {% if config.webhook_secret %}completed{% endif %}"></span>
+                            보안 설정
+                        </span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Main content -->
+            <div class="config-cards">
+                <!-- Discord Card -->
+                <div class="config-card {% if config.discord_token and config.discord_app_id %}completed{% endif %}">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <div class="card-icon discord">🎮</div>
+                            <div class="card-info">
+                                <h3>Discord 연동</h3>
+                                <p>Discord 봇과 서버를 연결합니다</p>
+                            </div>
+                            <div class="card-status">
+                                <span class="status-badge {% if config.discord_token and config.discord_app_id %}completed{% else %}required{% endif %}">
+                                    {% if config.discord_token and config.discord_app_id %}완료{% else %}필수{% endif %}
+                                </span>
+                                <span class="status-check {% if not (config.discord_token and config.discord_app_id) %}pending{% endif %}">
+                                    {% if config.discord_token and config.discord_app_id %}✓{% else %}○{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-section">
+                            <label class="form-label">
+                                Discord Bot Token <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-input" 
+                                       id="discord_token"
+                                       value=""
+                                       placeholder="예: MTExXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                                       onchange="validateField('discord_token', this.value)">
+                                <div class="input-actions">
+                                    <button class="input-btn" onclick="toggleVisibility('discord_token')" title="표시/숨기기">
+                                        👁
+                                    </button>
+                                    <button class="input-btn" onclick="copyToClipboard('discord_token')" title="복사">
+                                        📋
+                                    </button>
+                                </div>
+                                <div class="validation-icon" id="discord_token_validation"></div>
+                            </div>
+                            <div class="form-help">Discord 개발자 포털에서 봇을 생성하고 토큰을 복사하세요.</div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-section">
+                                <label class="form-label">
+                                    Application ID <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-input" 
+                                           id="discord_app_id"
+                                           value=""
+                                           placeholder="예: 1234567890123456789"
+                                           onchange="validateField('discord_app_id', this.value)">
+                                    <div class="validation-icon" id="discord_app_id_validation"></div>
+                                </div>
+                            </div>
+                            <div class="form-section">
+                                <label class="form-label">
+                                    Guild ID <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-input" 
+                                           id="discord_guild_id"
+                                           value=""
+                                           placeholder="예: 9876543210987654321"
+                                           onchange="validateField('discord_guild_id', this.value)">
+                                    <div class="validation-icon" id="discord_guild_id_validation"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notion Card -->
+                <div class="config-card {% if config.notion_token %}completed{% endif %}">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <div class="card-icon notion">📝</div>
+                            <div class="card-info">
+                                <h3>Notion 연동</h3>
+                                <p>Notion 워크스페이스와 데이터베이스를 연결합니다</p>
+                            </div>
+                            <div class="card-status">
+                                <span class="status-badge {% if config.notion_token %}completed{% else %}required{% endif %}">
+                                    {% if config.notion_token %}완료{% else %}필수{% endif %}
+                                </span>
+                                <span class="status-check {% if not config.notion_token %}pending{% endif %}">
+                                    {% if config.notion_token %}✓{% else %}○{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Notion 가이드 -->
+                        <div class="guide-section">
+                            <h4>🚀 Notion 연동 가이드</h4>
+                            <div class="guide-steps">
+                                <div class="guide-step">
+                                    <div class="guide-step-number">1</div>
+                                    <h5>통합 생성</h5>
+                                    <p>Notion에서 내부 통합을 생성하세요</p>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="guide-step-number">2</div>
+                                    <h5>토큰 복사</h5>
+                                    <p>시크릿 토큰을 복사하여 입력하세요</p>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="guide-step-number">3</div>
+                                    <h5>데이터베이스 연결</h5>
+                                    <p>데이터베이스 ID를 설정하세요</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <label class="form-label">
+                                Notion Integration Token <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-input" 
+                                       id="notion_token"
+                                       value=""
+                                       placeholder="예: secret_ntn_KxZ8q2pW4vB9mH5jR3tF7cA1nL6eU0sG"
+                                       onchange="validateField('notion_token', this.value); testNotionConnection();">
+                                <div class="input-actions">
+                                    <button class="input-btn" onclick="toggleVisibility('notion_token')" title="표시/숨기기">
+                                        👁
+                                    </button>
+                                    <button class="input-btn" onclick="copyToClipboard('notion_token')" title="복사">
+                                        📋
+                                    </button>
+                                </div>
+                                <div class="validation-icon" id="notion_token_validation"></div>
+                            </div>
+                            <div class="form-help">
+                                <a href="https://www.notion.so/my-integrations" target="_blank">Notion 통합 페이지</a>에서 새 통합을 만들고 시크릿 토큰을 복사하세요.
+                            </div>
+                        </div>
+
+                        <!-- 동적 데이터베이스 관리 -->
+                        <div class="form-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <label class="form-label" style="margin-bottom: 0;">연결된 Notion 데이터베이스</label>
+                                <button class="btn btn-secondary" onclick="addDatabase()" style="padding: 8px 16px; font-size: 12px;">
+                                    ➕ 데이터베이스 추가
+                                </button>
+                            </div>
+                            
+                            <!-- 데이터베이스 목록 -->
+                            <div id="databases-container">
+                                <div class="database-item template" style="display: none;">
+                                    <div style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; background: var(--apple-gray-50); border-radius: 8px; border: 1px solid var(--apple-gray-200);">
+                                        <div style="flex: 1;">
+                                            <div style="margin-bottom: 8px;">
+                                                <input type="text" 
+                                                       class="form-input database-name" 
+                                                       placeholder="예: Factory Tracker"
+                                                       style="margin-bottom: 8px;">
+                                                <input type="text" 
+                                                       class="form-input database-id" 
+                                                       placeholder="예: 26632049c4e280d99e24f821daf7cf27">
+                                            </div>
+                                            <input type="text" 
+                                                   class="form-input database-description" 
+                                                   placeholder="예: 팩토리 트래킹 및 제조 관리"
+                                                   style="font-size: 12px;">
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            <button class="input-btn" onclick="testDatabase(this)" title="연결 테스트" style="width: 36px; height: 36px;">
+                                                🔍
+                                            </button>
+                                            <button class="input-btn" onclick="removeDatabase(this)" title="삭제" style="width: 36px; height: 36px; background: #fef2f2; color: #ef4444;">
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 빈 상태 메시지 -->
+                                <div id="empty-databases" style="text-align: center; padding: 40px; color: var(--apple-gray-500); background: var(--apple-gray-50); border-radius: 8px; border: 2px dashed var(--apple-gray-300);">
+                                    <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+                                    <h4 style="margin: 0 0 4px 0; font-size: 14px;">연결된 데이터베이스가 없습니다</h4>
+                                    <p style="margin: 0; font-size: 12px;">상단의 "데이터베이스 추가" 버튼을 클릭하여 시작하세요</p>
+                                </div>
+                            </div>
+                            
+                            <div class="form-help" style="margin-top: 12px;">
+                                💡 <strong>데이터베이스 ID 찾는 방법:</strong> Notion에서 데이터베이스 페이지 열기 → 브라우저 주소창 URL에서 32자리 문자열 복사
+                                <br>예: notion.so/myworkspace/<strong>26632049c4e280d99e24f821daf7cf27</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Card -->
+                <div class="config-card {% if config.webhook_secret %}completed{% endif %}">
+                    <div class="card-header">
+                        <div class="card-header-content">
+                            <div class="card-icon security">🔐</div>
+                            <div class="card-info">
+                                <h3>보안 설정</h3>
+                                <p>웹훅 및 API 보안을 설정합니다</p>
+                            </div>
+                            <div class="card-status">
+                                <span class="status-badge {% if config.webhook_secret %}completed{% else %}required{% endif %}">
+                                    {% if config.webhook_secret %}완료{% else %}필수{% endif %}
+                                </span>
+                                <span class="status-check {% if not config.webhook_secret %}pending{% endif %}">
+                                    {% if config.webhook_secret %}✓{% else %}○{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-section">
+                            <label class="form-label">
+                                Webhook Secret Key <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-input" 
+                                       id="webhook_secret"
+                                       value=""
+                                       placeholder="예: wh_sec_A9kL4mX7pQ2bN8fH3cR6jW5tE1vY9zD0"
+                                       onchange="validateField('webhook_secret', this.value)">
+                                <div class="input-actions">
+                                    <button class="input-btn" onclick="generateSecureKey()" title="랜덤 생성">
+                                        🎲
+                                    </button>
+                                    <button class="input-btn" onclick="toggleVisibility('webhook_secret')" title="표시/숨기기">
+                                        👁
+                                    </button>
+                                    <button class="input-btn" onclick="copyToClipboard('webhook_secret')" title="복사">
+                                        📋
+                                    </button>
+                                </div>
+                                <div class="validation-icon" id="webhook_secret_validation"></div>
+                            </div>
+                            <div class="form-help">최소 16자 이상의 안전한 문자열을 입력하거나 랜덤 생성 버튼을 사용하세요.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="saveAllConfigs()">
+                        💾 모든 설정 저장
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportToEnv()">
+                        📥 .env 파일 다운로드
+                    </button>
+                    <button class="btn btn-secondary" onclick="validateAllConfigs()">
+                        ✅ 전체 검증
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-content">
+            <div class="notification-icon" id="notification-icon">✓</div>
+            <div class="notification-text">
+                <h4 id="notification-title">알림</h4>
+                <p id="notification-message">메시지</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let validationStates = {};
+        
+        // 필드 검증
+        function validateField(fieldId, value) {
+            const validationIcon = document.getElementById(fieldId + '_validation');
+            const input = document.getElementById(fieldId);
+            
+            // 로딩 표시
+            validationIcon.innerHTML = '⏳';
+            validationIcon.className = 'validation-icon loading';
+            
+            setTimeout(() => {
+                let isValid = false;
+                
+                if (fieldId === 'discord_token') {
+                    isValid = /^[A-Za-z0-9\-_.]{50,}$/.test(value);
+                } else if (fieldId.includes('_id') || fieldId.includes('Id')) {
+                    isValid = /^\d{17,19}$/.test(value) || /^[a-f0-9]{32}$/.test(value.replace(/-/g, ''));
+                } else if (fieldId === 'notion_token') {
+                    isValid = value.startsWith('secret_') && value.length > 40;
+                } else if (fieldId === 'webhook_secret') {
+                    isValid = value.length >= 16;
+                } else {
+                    isValid = value.length > 0;
+                }
+                
+                validationStates[fieldId] = isValid;
+                
+                if (isValid) {
+                    validationIcon.innerHTML = '✅';
+                    validationIcon.className = 'validation-icon valid';
+                    input.classList.remove('invalid');
+                    input.classList.add('valid');
+                } else {
+                    validationIcon.innerHTML = '❌';
+                    validationIcon.className = 'validation-icon invalid';
+                    input.classList.remove('valid');
+                    input.classList.add('invalid');
+                }
+            }, 300);
+        }
+
+        // Notion 연결 테스트
+        async function testNotionConnection() {
+            const token = document.getElementById('notion_token').value;
+            
+            if (!token || !token.startsWith('secret_') || token.length <= 40) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/config/api/test-notion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', 'Notion 연결 성공', `${result.user_name || '사용자'}의 워크스페이스에 연결되었습니다`);
+                } else {
+                    showNotification('error', '연결 실패', result.message || '알 수 없는 오류');
+                }
+            } catch (error) {
+                showNotification('error', '연결 오류', '네트워크 오류가 발생했습니다');
+            }
+        }
+
+        // 가시성 토글
+        function toggleVisibility(fieldId) {
+            const input = document.getElementById(fieldId);
+            const button = input.parentElement.querySelector('.input-btn');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁';
+            }
+        }
+
+        // 보안 키 생성
+        async function generateSecureKey() {
+            try {
+                const response = await fetch('/config/api/generate-webhook-secret', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const input = document.getElementById('webhook_secret');
+                    input.value = result.secret;
+                    validateField('webhook_secret', result.secret);
+                    
+                    showNotification('success', '보안 키 생성 완료', result.message);
+                } else {
+                    showNotification('error', '생성 실패', '보안 키 생성에 실패했습니다.');
+                }
+            } catch (error) {
+                // 백업: 클라이언트 사이드 생성
+                const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                let key = '';
+                for (let i = 0; i < 32; i++) {
+                    key += charset.charAt(Math.floor(Math.random() * charset.length));
+                }
+                
+                const input = document.getElementById('webhook_secret');
+                input.value = key;
+                validateField('webhook_secret', key);
+                
+                showNotification('success', '보안 키 생성 완료', '안전한 랜덤 키가 생성되었습니다.');
+            }
+        }
+
+        // 클립보드 복사
+        async function copyToClipboard(fieldId) {
+            const input = document.getElementById(fieldId);
+            try {
+                await navigator.clipboard.writeText(input.value);
+                showNotification('success', '복사 완료', '클립보드에 복사되었습니다.');
+            } catch (err) {
+                showNotification('error', '복사 실패', '클립보드 복사에 실패했습니다.');
+            }
+        }
+
+        // 설정 저장
+        async function saveAllConfigs() {
+            const configs = {
+                discord_token: document.getElementById('discord_token').value,
+                discord_app_id: document.getElementById('discord_app_id').value,
+                discord_guild_id: document.getElementById('discord_guild_id').value,
+                notion_token: document.getElementById('notion_token').value,
+                factory_tracker_db_id: document.getElementById('factory_tracker_db_id').value,
+                board_db_id: document.getElementById('board_db_id').value,
+                webhook_secret: document.getElementById('webhook_secret').value
+            };
+
+            try {
+                const response = await fetch('/config/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configs)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('success', '설정 저장 완료', result.message);
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showNotification('error', '저장 실패', result.message || '설정 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                showNotification('error', '오류 발생', '설정 저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        // .env 파일 내보내기
+        function exportToEnv() {
+            const configs = {
+                DISCORD_TOKEN: document.getElementById('discord_token').value,
+                DISCORD_APP_ID: document.getElementById('discord_app_id').value,
+                DISCORD_GUILD_ID: document.getElementById('discord_guild_id').value,
+                NOTION_TOKEN: document.getElementById('notion_token').value,
+                FACTORY_TRACKER_DB_ID: document.getElementById('factory_tracker_db_id').value,
+                BOARD_DB_ID: document.getElementById('board_db_id').value,
+                WEBHOOK_SECRET: document.getElementById('webhook_secret').value
+            };
+
+            const envContent = `# DinoBot Configuration
+# Generated: ${new Date().toISOString()}
+
+# Discord Integration
+DISCORD_TOKEN=${configs.DISCORD_TOKEN}
+DISCORD_APP_ID=${configs.DISCORD_APP_ID}
+DISCORD_GUILD_ID=${configs.DISCORD_GUILD_ID}
+
+# Notion Integration  
+NOTION_TOKEN=${configs.NOTION_TOKEN}
+FACTORY_TRACKER_DB_ID=${configs.FACTORY_TRACKER_DB_ID}
+BOARD_DB_ID=${configs.BOARD_DB_ID}
+
+# Security
+WEBHOOK_SECRET=${configs.WEBHOOK_SECRET}`;
+
+            const blob = new Blob([envContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '.env';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('success', '다운로드 완료', '.env 파일이 다운로드되었습니다.');
+        }
+
+        // 전체 검증
+        function validateAllConfigs() {
+            const fields = ['discord_token', 'discord_app_id', 'discord_guild_id', 'notion_token', 'webhook_secret'];
+            let allValid = true;
+            
+            fields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                validateField(fieldId, input.value);
+                if (!validationStates[fieldId]) {
+                    allValid = false;
+                }
+            });
+            
+            if (allValid) {
+                showNotification('success', '검증 완료', '모든 필수 설정이 올바르게 입력되었습니다!');
+            } else {
+                showNotification('error', '검증 실패', '일부 설정에 문제가 있습니다. 빨간색 아이콘을 확인해주세요.');
+            }
+        }
+
+        // 알림 표시
+        function showNotification(type, title, message) {
+            const notification = document.getElementById('notification');
+            const icon = document.getElementById('notification-icon');
+            const titleEl = document.getElementById('notification-title');
+            const messageEl = document.getElementById('notification-message');
+            
+            notification.className = `notification ${type}`;
+            icon.textContent = type === 'success' ? '✅' : '❌';
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        // 데이터베이스 관리 함수들
+        let databaseCount = 0;
+        let databases = [];
+
+        // 데이터베이스 추가
+        function addDatabase(name = '', id = '', description = '') {
+            const container = document.getElementById('databases-container');
+            const template = container.querySelector('.template');
+            const newDatabase = template.cloneNode(true);
+            
+            newDatabase.classList.remove('template');
+            newDatabase.style.display = 'block';
+            newDatabase.setAttribute('data-index', databaseCount);
+            
+            // 값 설정
+            if (name) newDatabase.querySelector('.database-name').value = name;
+            if (id) newDatabase.querySelector('.database-id').value = id;
+            if (description) newDatabase.querySelector('.database-description').value = description;
+            
+            // 빈 상태 메시지 숨기기
+            document.getElementById('empty-databases').style.display = 'none';
+            
+            // 템플릿 앞에 추가
+            container.insertBefore(newDatabase, template);
+            databaseCount++;
+            
+            // 첫 번째 입력 필드에 포커스
+            newDatabase.querySelector('.database-name').focus();
+        }
+
+        // 데이터베이스 삭제
+        function removeDatabase(button) {
+            const databaseItem = button.closest('.database-item');
+            databaseItem.remove();
+            
+            // 남은 데이터베이스가 없으면 빈 상태 메시지 표시
+            const container = document.getElementById('databases-container');
+            const visibleItems = container.querySelectorAll('.database-item:not(.template)');
+            if (visibleItems.length === 0) {
+                document.getElementById('empty-databases').style.display = 'block';
+            }
+        }
+
+        // 데이터베이스 연결 테스트
+        async function testDatabase(button) {
+            const databaseItem = button.closest('.database-item');
+            const nameInput = databaseItem.querySelector('.database-name');
+            const idInput = databaseItem.querySelector('.database-id');
+            const token = document.getElementById('notion_token').value;
+            
+            if (!token) {
+                showNotification('error', '토큰 필요', 'Notion 토큰을 먼저 입력하세요.');
+                return;
+            }
+            
+            if (!idInput.value) {
+                showNotification('error', 'ID 필요', '데이터베이스 ID를 입력하세요.');
+                return;
+            }
+            
+            // 버튼 로딩 상태
+            const originalText = button.textContent;
+            button.textContent = '⏳';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/config/api/test-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        token: token, 
+                        database_id: idInput.value 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('success', '연결 성공', `${nameInput.value || '데이터베이스'}에 연결되었습니다`);
+                    // 성공 시 테두리 색상 변경
+                    databaseItem.querySelector('div').style.borderColor = 'var(--discord-green)';
+                } else {
+                    showNotification('error', '연결 실패', result.message || '데이터베이스 연결에 실패했습니다');
+                    databaseItem.querySelector('div').style.borderColor = '#ef4444';
+                }
+            } catch (error) {
+                showNotification('error', '오류 발생', '네트워크 오류가 발생했습니다');
+                databaseItem.querySelector('div').style.borderColor = '#ef4444';
+            } finally {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        // 모든 데이터베이스 수집
+        function getAllDatabases() {
+            const container = document.getElementById('databases-container');
+            const items = container.querySelectorAll('.database-item:not(.template)');
+            const databases = [];
+            
+            items.forEach(item => {
+                const name = item.querySelector('.database-name').value;
+                const id = item.querySelector('.database-id').value;
+                const description = item.querySelector('.database-description').value;
+                
+                if (name && id) {
+                    databases.push({
+                        name: name,
+                        id: id,
+                        description: description
+                    });
+                }
+            });
+            
+            return databases;
+        }
+
+        // 데이터베이스 로드
+        async function loadDatabases() {
+            try {
+                const response = await fetch('/config/api/databases');
+                const result = await response.json();
+                
+                if (result.success && result.databases.length > 0) {
+                    result.databases.forEach(db => {
+                        addDatabase(db.name, db.id, db.description);
+                    });
+                }
+            } catch (error) {
+                console.error('데이터베이스 로드 실패:', error);
+            }
+        }
+
+        // 저장 함수 수정
+        async function saveAllConfigs() {
+            const configs = {
+                discord_token: document.getElementById('discord_token').value,
+                discord_app_id: document.getElementById('discord_app_id').value,
+                discord_guild_id: document.getElementById('discord_guild_id').value,
+                notion_token: document.getElementById('notion_token').value,
+                webhook_secret: document.getElementById('webhook_secret').value,
+                databases: getAllDatabases()
+            };
+
+            try {
+                const response = await fetch('/config/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configs)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('success', '설정 저장 완료', result.message);
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showNotification('error', '저장 실패', result.message || '설정 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                showNotification('error', '오류 발생', '설정 저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 기존 값들 검증
+            const fields = ['discord_token', 'discord_app_id', 'discord_guild_id', 'notion_token', 'webhook_secret'];
+            fields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                if (input.value) {
+                    validateField(fieldId, input.value);
+                }
+            });
+            
+            // Notion 연결 상태 확인
+            testNotionConnection();
+            
+            // 데이터베이스 로드
+            loadDatabases();
+        });
+    </script>
+</body>
+</html>
