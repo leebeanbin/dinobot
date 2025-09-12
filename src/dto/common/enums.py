@@ -50,3 +50,12 @@ class MessageType(str, Enum):
     ERROR_NOTIFICATION = "error_notification"
     SUCCESS_NOTIFICATION = "success_notification"
     SYSTEM_STATUS = "system_status"
+
+
+class ResponseType(str, Enum):
+    """Response type enumeration"""
+
+    SUCCESS = "success"
+    ERROR = "error"
+    INFO = "info"
+    WARNING = "warning"
