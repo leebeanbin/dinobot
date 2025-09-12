@@ -57,6 +57,14 @@ async def config_management_page(request: Request):
         # 모든 설정 정보 가져오기
         all_configs = await config_manager.get_all_configs()
         missing_configs = config_manager.get_missing_required_configs()
+        
+        # 디버깅: 설정값 로그
+        logger.info(f"🔍 로드된 설정값들: {list(all_configs.keys())}")
+        for key, value in all_configs.items():
+            if value is not None:
+                logger.info(f"✅ {key}: {'*' * min(len(str(value)), 10) if 'TOKEN' in key or 'SECRET' in key else value}")
+            else:
+                logger.info(f"❌ {key}: None")
 
         # 카테고리별 설정
         categories = {}
@@ -96,34 +104,38 @@ async def config_management_page(request: Request):
         total_count = len(required_categories)
         progress_percentage = int((configured_count / total_count * 100) if total_count > 0 else 0)
         
+        # Helper function to safely convert config values to strings
+        def safe_config_str(value):
+            return str(value) if value is not None else ''
+        
         html_content = html_content.replace(
             "{{ configured_configs }}", str(configured_count)
         ).replace(
             "{{ total_configs }}", str(total_count)
         ).replace(
-            "{{ config.discord_token }}", str(all_configs.get('DISCORD_TOKEN', ''))
+            "{{ config.discord_token }}", safe_config_str(all_configs.get('DISCORD_TOKEN'))
         ).replace(
-            "{{ config.discord_app_id }}", str(all_configs.get('DISCORD_APP_ID', ''))
+            "{{ config.discord_app_id }}", safe_config_str(all_configs.get('DISCORD_APP_ID'))
         ).replace(
-            "{{ config.discord_guild_id }}", str(all_configs.get('DISCORD_GUILD_ID', ''))
+            "{{ config.discord_guild_id }}", safe_config_str(all_configs.get('DISCORD_GUILD_ID'))
         ).replace(
-            "{{ config.notion_token }}", str(all_configs.get('NOTION_TOKEN', ''))
+            "{{ config.notion_token }}", safe_config_str(all_configs.get('NOTION_TOKEN'))
         ).replace(
-            "{{ config.factory_tracker_db_id }}", str(all_configs.get('FACTORY_TRACKER_DB_ID', ''))
+            "{{ config.factory_tracker_db_id }}", safe_config_str(all_configs.get('FACTORY_TRACKER_DB_ID'))
         ).replace(
-            "{{ config.board_db_id }}", str(all_configs.get('BOARD_DB_ID', ''))
+            "{{ config.board_db_id }}", safe_config_str(all_configs.get('BOARD_DB_ID'))
         ).replace(
-            "{{ config.webhook_secret }}", str(all_configs.get('WEBHOOK_SECRET', ''))
+            "{{ config.webhook_secret }}", safe_config_str(all_configs.get('WEBHOOK_SECRET'))
         ).replace(
-            "{{ config.discord_token or '' }}", str(all_configs.get('DISCORD_TOKEN', ''))
+            "{{ config.discord_token or '' }}", safe_config_str(all_configs.get('DISCORD_TOKEN'))
         ).replace(
-            "{{ config.discord_app_id or '' }}", str(all_configs.get('DISCORD_APP_ID', ''))
+            "{{ config.discord_app_id or '' }}", safe_config_str(all_configs.get('DISCORD_APP_ID'))
         ).replace(
-            "{{ config.discord_guild_id or '' }}", str(all_configs.get('DISCORD_GUILD_ID', ''))
+            "{{ config.discord_guild_id or '' }}", safe_config_str(all_configs.get('DISCORD_GUILD_ID'))
         ).replace(
-            "{{ config.notion_token or '' }}", str(all_configs.get('NOTION_TOKEN', ''))
+            "{{ config.notion_token or '' }}", safe_config_str(all_configs.get('NOTION_TOKEN'))
         ).replace(
-            "{{ config.webhook_secret or '' }}", str(all_configs.get('WEBHOOK_SECRET', ''))
+            "{{ config.webhook_secret or '' }}", safe_config_str(all_configs.get('WEBHOOK_SECRET'))
         )
         
         # 복잡한 진행률 템플릿 문법 처리
