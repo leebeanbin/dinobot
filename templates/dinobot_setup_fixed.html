@@ -992,7 +992,7 @@
                                 <input type="password" 
                                        class="form-input" 
                                        id="discord_token"
-                                       value=""
+                                       value="{{ config.discord_token or '' }}"
                                        placeholder="예: MTExXXXXXXXXXXXXXXXXXXX.XXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                                        onchange="validateField('discord_token', this.value)">
                                 <div class="input-actions">
@@ -1017,7 +1017,7 @@
                                     <input type="text" 
                                            class="form-input" 
                                            id="discord_app_id"
-                                           value=""
+                                           value="{{ config.discord_app_id or '' }}"
                                            placeholder="예: 1234567890123456789"
                                            onchange="validateField('discord_app_id', this.value)">
                                     <div class="validation-icon" id="discord_app_id_validation"></div>
@@ -1031,7 +1031,7 @@
                                     <input type="text" 
                                            class="form-input" 
                                            id="discord_guild_id"
-                                           value=""
+                                           value="{{ config.discord_guild_id or '' }}"
                                            placeholder="예: 9876543210987654321"
                                            onchange="validateField('discord_guild_id', this.value)">
                                     <div class="validation-icon" id="discord_guild_id_validation"></div>
@@ -1091,7 +1091,7 @@
                                 <input type="password" 
                                        class="form-input" 
                                        id="notion_token"
-                                       value=""
+                                       value="{{ config.notion_token or '' }}"
                                        placeholder="예: secret_ntn_KxZ8q2pW4vB9mH5jR3tF7cA1nL6eU0sG"
                                        onchange="validateField('notion_token', this.value); testNotionConnection();">
                                 <div class="input-actions">
@@ -1192,7 +1192,7 @@
                                 <input type="password" 
                                        class="form-input" 
                                        id="webhook_secret"
-                                       value=""
+                                       value="{{ config.webhook_secret or '' }}"
                                        placeholder="예: wh_sec_A9kL4mX7pQ2bN8fH3cR6jW5tE1vY9zD0"
                                        onchange="validateField('webhook_secret', this.value)">
                                 <div class="input-actions">
