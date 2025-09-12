@@ -17,6 +17,8 @@ from fastapi.responses import JSONResponse
 
 # 핵심 모듈들
 from src.core.config import settings
+from src.core.dynamic_config import dynamic_config_manager
+from src.service.workflow.dynamic_command_service import dynamic_command_service
 from src.core.logger import (
     initialize_logging_system,
     get_logger,
@@ -162,28 +164,44 @@ class ServiceManager(IServiceManager):
                 metadata=collection_result,
             )
 
-            # 3. 서비스 매니저 초기화
-            await self._service_manager.initialize()
+            # 3. 설정 관리자 초기화
+            from src.core.config_manager import config_manager
 
-            # 4. Notion 동기화 서비스 시작 (데이터 로딩)
-            sync_service = self._service_manager.get_service("sync")
-            if sync_service:
-                await sync_service.start_continuous_synchronization_monitor()
+            await config_manager.initialize()
+
+            # 3.5. 설정 상태 확인 및 조건부 초기화
+            if config_manager.is_fully_configured():
+                logger.info(
+                    "✅ 모든 필수 설정이 완료되었습니다. 전체 서비스를 시작합니다."
+                )
+                await self._initialize_full_services()
+            else:
+                missing_configs = config_manager.get_missing_configs()
+                logger.warning(
+                    f"⚠️ 필수 설정이 누락되었습니다: {', '.join(missing_configs)}"
+                )
+                logger.info(
+                    "🔧 설정 웹 UI만 활성화합니다. http://localhost:8889/config 에서 설정을 완료하세요."
+                )
+                await self._initialize_config_only()
+
+            # 4. 서비스별 초기화는 조건부 초기화에서 처리됨
 
             # 5. 초기 데이터 동기화 완료 대기
             await asyncio.sleep(5)  # 동기화 완료 대기
 
-            # 6. Discord 봇 초기화 (데이터 로딩 완료 후)
-            try:
-                discord_service = self._service_manager.get_service("discord")
-                await discord_service.start_bot()
+            # 6. Discord 봇 초기화 (전체 서비스 모드에서만)
+            if config_manager.is_fully_configured():
+                try:
+                    discord_service = self._service_manager.get_service("discord")
+                    await discord_service.start_bot()
 
-                # Discord 봇에 비즈니스 로직 콜백 설정
-                discord_service.set_command_callback(
-                    self._process_command_business_logic
-                )
-            except KeyError:
-                logger.warning("⚠️ Discord 서비스가 비활성화되어 있습니다.")
+                    # Discord 봇에 비즈니스 로직 콜백 설정
+                    discord_service.set_command_callback(
+                        self._process_command_business_logic
+                    )
+                except KeyError:
+                    logger.warning("⚠️ Discord 서비스가 비활성화되어 있습니다.")
 
             # 6. MCP 관련 초기화 제거
             self._mcp_manager = None
@@ -1272,6 +1290,15 @@ class ServiceManager(IServiceManager):
     def _setup_web_routes(self):
         """FastAPI 웹 라우트들을 설정"""
 
+        # 설정 관리 API 추가
+        try:
+            from src.api.config_api import router as config_router
+
+            self.web_application.include_router(config_router)
+            logger.info("✅ 설정 관리 API 라우트 등록 완료")
+        except ImportError as e:
+            logger.warning(f"⚠️ 설정 관리 API 라우트 등록 실패: {e}")
+
         @self.web_application.post("/notion/webhook")
         async def notion_webhook_handler(
             request: Request, x_webhook_secret: str = Header(default="")
@@ -1940,6 +1967,83 @@ class ServiceManager(IServiceManager):
                 content="❌ 검색 중 오류가 발생했습니다.",
                 is_ephemeral=True,
             )
+
+    async def _initialize_full_services(self):
+        """전체 서비스 초기화 (설정 완료 시)"""
+        try:
+            # 서비스 매니저 초기화
+            await self._service_manager.initialize()
+
+            # 동적 설정 시스템 초기화
+            await self._initialize_dynamic_config()
+
+            logger.info("✅ 전체 서비스 초기화 완료")
+
+        except Exception as e:
+            logger.error(f"❌ 전체 서비스 초기화 실패: {e}")
+            raise
+
+    async def _initialize_config_only(self):
+        """설정 웹 UI만 초기화 (설정 미완료 시)"""
+        try:
+            # FastAPI 웹 서버만 시작 (설정 관리용)
+            logger.info("🔧 설정 관리 모드로 시작합니다")
+
+            # 웹 라우트 설정
+            self._setup_web_routes()
+
+            # FastAPI 서버 시작
+            config = uvicorn.Config(
+                self.web_application,
+                host="0.0.0.0",
+                port=settings.port,
+                log_level="warning",
+                access_log=False,
+            )
+            server = uvicorn.Server(config)
+
+            # 서버를 계속 실행 (설정 모드에서는 메인 루프)
+            logger.info(
+                f"🌐 설정 관리 웹 UI 시작: http://localhost:{settings.port}/config"
+            )
+            logger.info("💡 설정을 완료한 후 애플리케이션을 재시작하면 전체 서비스가 시작됩니다.")
+            
+            # 서버를 계속 실행
+            await server.serve()
+
+        except Exception as e:
+            logger.error(f"❌ 설정 모드 초기화 실패: {e}")
+            raise
+
+    async def _initialize_dynamic_config(self):
+        """동적 설정 시스템 초기화"""
+        try:
+            # Notion 서비스 가져오기
+            notion_service = self._service_manager.get_service("notion")
+            if not notion_service:
+                logger.warning(
+                    "⚠️ Notion 서비스를 찾을 수 없어 동적 설정 초기화를 건너뜁니다"
+                )
+                return
+
+            # Discord 서비스 가져오기
+            discord_service = self._service_manager.get_service("discord")
+            if not discord_service:
+                logger.warning(
+                    "⚠️ Discord 서비스를 찾을 수 없어 동적 명령어 서비스 초기화를 건너뜁니다"
+                )
+                return
+
+            # 동적 설정 관리자 초기화
+            await dynamic_config_manager.initialize(notion_service)
+            logger.info("✅ 동적 설정 관리자 초기화 완료")
+
+            # 동적 명령어 서비스 초기화
+            await dynamic_command_service.initialize(notion_service, discord_service)
+            logger.info("✅ 동적 명령어 서비스 초기화 완료")
+
+        except Exception as e:
+            logger.error(f"❌ 동적 설정 시스템 초기화 실패: {e}")
 
     async def initialize_all_services(self) -> bool:
         """모든 서비스 초기화 (abstract 메서드 구현)"""

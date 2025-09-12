@@ -1,13 +1,19 @@
 """Configuration settings for DinoBot."""
 
 import os
-from typing import Optional
+from typing import Optional, Any
 from zoneinfo import ZoneInfo
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
 # .env 파일 로드
 load_dotenv()
+
+# 설정 관리자 초기화 (순환 import 방지)
+try:
+    from .config_manager import config_manager
+except ImportError:
+    config_manager = None
 
 
 class Settings(BaseSettings):
@@ -35,7 +41,7 @@ class Settings(BaseSettings):
 
     # MongoDB settings
     mongodb_url: str = "mongodb://localhost:27017"
-    mongodb_db_name: str = "meetuploader"
+    mongodb_db_name: str = "dinobot"
 
     # Server settings
     host: str = "0.0.0.0"
@@ -64,6 +70,36 @@ class Settings(BaseSettings):
     # Logging settings
     log_level: str = "INFO"
     log_to_file: bool = True
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # 설정 관리자와 동기화
+        if config_manager:
+            self._sync_with_config_manager()
+
+    def _sync_with_config_manager(self):
+        """설정 관리자와 동기화 (동기 버전)"""
+        # 설정 관리자에서 값 가져오기 (동기적으로)
+        for key, schema in config_manager.schemas.items():
+            if key in config_manager.values:
+                value = config_manager.values[key].value
+                if value is not None:
+                    # Pydantic 필드명으로 변환 (대문자 -> 소문자)
+                    field_name = key.lower()
+                    if hasattr(self, field_name):
+                        setattr(self, field_name, value)
+
+    def get_from_config_manager(self, key: str, default: Any = None):
+        """설정 관리자에서 값 가져오기 (동기 버전)"""
+        if config_manager and key in config_manager.values:
+            return config_manager.values[key].value
+        return default
+
+    def set_to_config_manager(self, key: str, value: Any):
+        """설정 관리자에 값 설정"""
+        if config_manager:
+            return config_manager.set(key, value, "settings_sync")
+        return False
 
     class Config:
         env_file = ".env"
