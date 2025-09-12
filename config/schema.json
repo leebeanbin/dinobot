@@ -1,0 +1,7 @@
+{
+  "schemas": [
+    {
+      "key": "DISCORD_TOKEN",
+      "name": "Discord Bot Token",
+      "description": "Discord 봇 토큰 (필수)",
+      "type": 
