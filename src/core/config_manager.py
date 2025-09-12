@@ -341,11 +341,18 @@ class ConfigManager:
             return False
 
     async def get(self, key: str, default: Any = None) -> Any:
-        """설정 값 가져오기 (MongoDB에서)"""
+        """설정 값 가져오기 (환경변수 우선, MongoDB 차순)"""
         try:
+            # 1. 먼저 self.values에서 확인 (환경변수 등)
+            if key in self.values:
+                return self.values[key].value
+            
+            # 2. MongoDB에서 확인
             doc = await self.collection.find_one({"key": key})
             if doc:
                 return doc.get("value", default)
+            
+            # 3. 스키마 기본값 확인    
             elif key in self.schemas and self.schemas[key].default_value is not None:
                 return self.schemas[key].default_value
             else:
