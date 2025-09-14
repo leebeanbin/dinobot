@@ -1261,7 +1261,7 @@
                 } else if (fieldId.includes('_id') || fieldId.includes('Id')) {
                     isValid = /^\d{17,19}$/.test(value) || /^[a-f0-9]{32}$/.test(value.replace(/-/g, ''));
                 } else if (fieldId === 'notion_token') {
-                    isValid = value.startsWith('secret_') && value.length > 40;
+                    isValid = value.startsWith('ntn_') && value.length > 40;
                 } else if (fieldId === 'webhook_secret') {
                     isValid = value.length >= 16;
                 } else {

@@ -16,6 +16,13 @@ class CommandType(str, Enum):
     FETCH_PAGE = "fetch_page"
     WATCH_PAGE = "watch_page"
 
+    # CRUD Update/Delete 명령어들
+    UPDATE_TASK = "update_task"  # Factory Tracker DB 태스크 업데이트
+    UPDATE_MEETING = "update_meeting"  # Board DB 회의록 업데이트
+    UPDATE_DOCUMENT = "update_document"  # Board DB 문서 업데이트
+    ARCHIVE_PAGE = "archive_page"  # 페이지 아카이브 (삭제)
+    RESTORE_PAGE = "restore_page"  # 페이지 복구
+
     # 통계 관련 명령어들
     DAILY_STATS = "daily_stats"
     WEEKLY_STATS = "weekly_stats"

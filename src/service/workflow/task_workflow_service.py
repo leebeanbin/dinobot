@@ -32,14 +32,43 @@ class TaskWorkflowService(BaseWorkflowService):
                 return validation_result
 
             # 2. 태스크 생성
-            title = request.parameters.get("title")
-            priority = request.parameters.get("priority", "Medium")
-            assignee = request.parameters.get("assignee", request.user.username)
+            title = request.parameters.get("title") or request.parameters.get("name")
+            from src.core.constants import DEFAULT_PRIORITY
+            priority = request.parameters.get("priority", DEFAULT_PRIORITY)
+            assignee = request.parameters.get("assignee") or request.parameters.get("person") or request.user.username
 
-            # 3. 마감일 설정 (기본값: 오늘)
-            due_date = datetime.now().replace(
-                hour=23, minute=59, second=59, microsecond=0
-            )
+            # 3. 마감일 설정
+            deadline_str = request.parameters.get("deadline")
+            days = request.parameters.get("days")
+
+            if deadline_str:
+                try:
+                    # YYYY-MM-DD 형식 파싱 (Discord에서 전달됨)
+                    due_date = datetime.strptime(deadline_str, "%Y-%m-%d").replace(
+                        hour=23, minute=59, second=59, microsecond=0
+                    )
+                except ValueError:
+                    # 잘못된 형식이면 기본값 사용 (오늘)
+                    due_date = datetime.now().replace(
+                        hour=23, minute=59, second=59, microsecond=0
+                    )
+            elif days is not None:
+                # days 파라미터 직접 사용 (dynamic command에서)
+                try:
+                    days = int(days)
+                    due_date = (datetime.now() + timedelta(days=days)).replace(
+                        hour=23, minute=59, second=59, microsecond=0
+                    )
+                except (ValueError, TypeError):
+                    # 잘못된 days 값이면 기본값 사용
+                    due_date = datetime.now().replace(
+                        hour=23, minute=59, second=59, microsecond=0
+                    )
+            else:
+                # 기본값: 오늘
+                due_date = datetime.now().replace(
+                    hour=23, minute=59, second=59, microsecond=0
+                )
 
             # 4. Notion 태스크 생성
             notion_result, page_url = await self._create_notion_page(
@@ -68,12 +97,12 @@ class TaskWorkflowService(BaseWorkflowService):
         self, request: DiscordCommandRequestDTO
     ) -> Optional[DiscordMessageResponseDTO]:
         """태스크 파라미터 유효성 검증"""
-        title = request.parameters.get("title")
+        title = request.parameters.get("title") or request.parameters.get("name")
 
         if not title:
             return DiscordMessageResponseDTO(
                 message_type=MessageType.ERROR_NOTIFICATION,
-                content="❌ 태스크 제목이 필요합니다.",
+                content="❌ 태스크 제목이 필요합니다. (title 또는 name 파라미터 필요)",
                 is_ephemeral=True,
             )
 
@@ -105,7 +134,7 @@ class TaskWorkflowService(BaseWorkflowService):
         try:
             await save_notion_page(
                 page_id=notion_result.get("id", ""),
-                database_id=settings.task_db_id,
+                database_id=settings.factory_tracker_db_id,
                 page_type="task",
                 title=title,
                 created_by=str(request.user.user_id),

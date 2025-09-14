@@ -141,6 +141,20 @@ class NotionService:
         """노션 Number 속성용 값 생성"""
         return {"number": float(number)}
 
+    @staticmethod
+    def create_people_value(people_names: List[str]) -> Dict[str, Any]:
+        """노션 People 속성용 값 생성 (이름 기반)"""
+        # Notion People 속성은 사용자 객체 배열을 받음
+        # 실제로는 사용자 ID가 필요하지만, 이름만으로는 제한적
+        # 여기서는 이름을 그대로 전달하여 Notion이 자동 매칭하도록 함
+        people_objects = []
+        for name in people_names:
+            if name and str(name).strip():
+                # 간단한 name 매핑 - 실제로는 Notion 사용자 DB에서 검색해야 함
+                people_objects.append({"object": "user", "name": str(name).strip()})
+
+        return {"people": people_objects}
+
     # -------------------
     # 스키마 관리 메서드들
     # -------------------
@@ -482,6 +496,16 @@ class NotionService:
                         # Title은 이미 위에서 처리됨
                         pass
 
+                    elif property_type == "people":
+                        # People 속성 처리 (단일 값 또는 리스트)
+                        if isinstance(input_value, list):
+                            people_list = input_value
+                        else:
+                            people_list = [input_value] if input_value else []
+
+                        properties[actual_property_name] = self.create_people_value(people_list)
+                        logger.info(f"✅ People 속성 설정: {actual_property_name} = {people_list}")
+
                     else:
                         logger.info(
                             f"🚧 지원하지 않는 속성 타입 '{property_type}' (속성: {actual_property_name})"
@@ -702,6 +726,35 @@ class NotionService:
                 f"문서 페이지 생성 실패: {title}", original_exception=creation_error
             )
 
+    @safe_execution("create_task_page")
+    @track_notion_api("create_task_page", "task")
+    async def create_task_page(
+        self, title: str, priority: str = "Medium", assignee: str = None, due_date: datetime = None
+    ) -> Dict[str, Any]:
+        """태스크 페이지 생성 (Factory Tracker DB 사용)"""
+        try:
+            # create_factory_task 메서드를 재사용하여 일관성 확보
+            return await self.create_factory_task(
+                assignee=assignee or "미지정",
+                task_name=title,
+                priority=priority,
+                due_date=due_date
+            )
+
+        except Exception as creation_error:
+            raise NotionAPIException(
+                f"태스크 페이지 생성 실패: {title}", original_exception=creation_error
+            )
+
+    @safe_execution("create_document_page")
+    @track_notion_api("create_document_page", "document")
+    async def create_document_page(
+        self, title: str, doc_type: str = "개발 문서"
+    ) -> Dict[str, Any]:
+        """문서 페이지 생성 (Board DB 사용)"""
+        # create_board_page와 동일한 로직 사용
+        return await self.create_board_page(title, doc_type)
+
     async def extract_page_url(self, page_object: Dict[str, Any]) -> str:
         """노션 페이지 객체에서 URL 추출"""
         return page_object.get("url", "")
@@ -872,6 +925,187 @@ class NotionService:
         preview = original_text[:1200] + (" ..." if len(original_text) > 1200 else "")
 
         return header + template + "```text\n" + preview + "\n```"
+
+    @notion_retry(max_retries=2, backoff_factor=0.5)
+    @safe_execution("archive_page")
+    @track_notion_api("archive_page", "cleanup")
+    async def archive_page(self, page_id: str) -> bool:
+        """Notion 페이지를 아카이브 (삭제)"""
+        try:
+            response = self.notion_api_client.pages.update(
+                page_id=page_id,
+                archived=True
+            )
+
+            if response:
+                logger.info(f"🗑️ 페이지 아카이브 완료: {page_id}")
+                return True
+            return False
+
+        except Exception as e:
+            error_str = str(e)
+            if "404" in error_str or "not found" in error_str.lower():
+                logger.debug(f"📋 페이지가 이미 존재하지 않음: {page_id}")
+                return True  # 이미 없으면 성공으로 간주
+            else:
+                logger.error(f"❌ 페이지 아카이브 실패: {page_id} - {error_str}")
+                return False
+
+    @notion_retry(max_retries=2, backoff_factor=0.5)
+    @safe_execution("restore_page")
+    @track_notion_api("restore_page", "restore")
+    async def restore_page(self, page_id: str) -> bool:
+        """Notion 페이지를 복구 (아카이브 해제)"""
+        try:
+            response = self.notion_api_client.pages.update(
+                page_id=page_id,
+                archived=False
+            )
+            if response:
+                logger.info(f"🔄 페이지 복구 완료: {page_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"❌ 페이지 복구 실패: {page_id} - {str(e)}")
+            return False
+
+    @notion_retry(max_retries=2, backoff_factor=0.5)
+    @safe_execution("update_task_page")
+    @track_notion_api("update_task_page", "update")
+    async def update_task_page(
+        self,
+        page_id: str,
+        title: Optional[str] = None,
+        priority: Optional[str] = None,
+        assignee: Optional[str] = None,
+        due_date: Optional[datetime] = None,
+        status: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """태스크 페이지 업데이트"""
+        try:
+            # 업데이트할 속성들 준비
+            properties = {}
+
+            if title:
+                properties["Task name"] = self.create_title_value(title)
+
+            if priority:
+                properties["Priority"] = self.create_select_value(priority)
+
+            if assignee:
+                properties["Assignee"] = self.create_people_value([assignee])
+
+            if due_date:
+                properties["Due"] = self.create_date_value(due_date.isoformat())
+
+            if status:
+                properties["Status"] = self.create_status_value(status)
+
+            if not properties:
+                logger.warning(f"⚠️ 업데이트할 속성이 없습니다: {page_id}")
+                return None
+
+            response = self.notion_api_client.pages.update(
+                page_id=page_id,
+                properties=properties
+            )
+
+            if response:
+                logger.info(f"✅ 태스크 페이지 업데이트 완료: {page_id}")
+                return response
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ 태스크 페이지 업데이트 실패: {page_id} - {str(e)}")
+            raise NotionAPIException(f"태스크 업데이트 실패: {str(e)}")
+
+    @notion_retry(max_retries=2, backoff_factor=0.5)
+    @safe_execution("update_meeting_page")
+    @track_notion_api("update_meeting_page", "update")
+    async def update_meeting_page(
+        self,
+        page_id: str,
+        title: Optional[str] = None,
+        participants: Optional[List[str]] = None,
+        meeting_type: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """회의록 페이지 업데이트"""
+        try:
+            # 업데이트할 속성들 준비
+            properties = {}
+
+            if title:
+                properties["Name"] = self.create_title_value(title)
+
+            if participants:
+                properties["Participants"] = self.create_people_value(participants)
+
+            if meeting_type:
+                properties["Type"] = self.create_select_value(meeting_type)
+
+            if status:
+                properties["Status"] = self.create_status_value(status)
+
+            if not properties:
+                logger.warning(f"⚠️ 업데이트할 속성이 없습니다: {page_id}")
+                return None
+
+            response = self.notion_api_client.pages.update(
+                page_id=page_id,
+                properties=properties
+            )
+
+            if response:
+                logger.info(f"✅ 회의록 페이지 업데이트 완료: {page_id}")
+                return response
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ 회의록 페이지 업데이트 실패: {page_id} - {str(e)}")
+            raise NotionAPIException(f"회의록 업데이트 실패: {str(e)}")
+
+    @notion_retry(max_retries=2, backoff_factor=0.5)
+    @safe_execution("update_document_page")
+    @track_notion_api("update_document_page", "update")
+    async def update_document_page(
+        self,
+        page_id: str,
+        title: Optional[str] = None,
+        doc_type: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """문서 페이지 업데이트"""
+        try:
+            # 업데이트할 속성들 준비
+            properties = {}
+
+            if title:
+                properties["Name"] = self.create_title_value(title)
+
+            if doc_type:
+                properties["Status"] = self.create_select_value(doc_type)
+
+            if status:
+                properties["Status"] = self.create_status_value(status)
+
+            if not properties:
+                logger.warning(f"⚠️ 업데이트할 속성이 없습니다: {page_id}")
+                return None
+
+            response = self.notion_api_client.pages.update(
+                page_id=page_id,
+                properties=properties
+            )
+
+            if response:
+                logger.info(f"✅ 문서 페이지 업데이트 완료: {page_id}")
+                return response
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ 문서 페이지 업데이트 실패: {page_id} - {str(e)}")
+            raise NotionAPIException(f"문서 업데이트 실패: {str(e)}")
 
 
 # Global Notion service instance

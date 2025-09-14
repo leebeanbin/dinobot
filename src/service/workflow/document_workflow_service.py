@@ -31,8 +31,9 @@ class DocumentWorkflowService(BaseWorkflowService):
                 return validation_result
 
             # 2. 문서 생성
-            title = request.parameters.get("title")
-            doc_type = request.parameters.get("doc_type", "개발 문서")
+            title = request.parameters.get("title") or request.parameters.get("name")
+            from src.core.constants import DEFAULT_DOCUMENT_TYPE
+            doc_type = request.parameters.get("doc_type", DEFAULT_DOCUMENT_TYPE)
             unique_title = self._generate_unique_title(title)
 
             # 3. Notion 문서 생성
@@ -61,18 +62,19 @@ class DocumentWorkflowService(BaseWorkflowService):
         self, request: DiscordCommandRequestDTO
     ) -> Optional[DiscordMessageResponseDTO]:
         """문서 파라미터 유효성 검증"""
-        title = request.parameters.get("title")
-        doc_type = request.parameters.get("doc_type", "개발 문서")
+        title = request.parameters.get("title") or request.parameters.get("name")
+        from src.core.constants import DEFAULT_DOCUMENT_TYPE, VALID_DOCUMENT_TYPES, config_helper
+        doc_type = request.parameters.get("doc_type", DEFAULT_DOCUMENT_TYPE)
 
         if not title:
             return DiscordMessageResponseDTO(
                 message_type=MessageType.ERROR_NOTIFICATION,
-                content="❌ 문서 제목이 필요합니다.",
+                content=config_helper.format_error_message("missing_title"),
                 is_ephemeral=True,
             )
 
         # 문서 타입 유효성 검증
-        valid_doc_types = ["개발 문서", "기획안", "개발 규칙", "회의록"]
+        valid_doc_types = VALID_DOCUMENT_TYPES
         if doc_type not in valid_doc_types:
             return DiscordMessageResponseDTO(
                 message_type=MessageType.ERROR_NOTIFICATION,

@@ -33,6 +33,7 @@ class SearchService:
         page_type: str = None,
         user_filter: str = None,
         days_limit: int = 90,
+        days: int = None,  # 호환성을 위한 파라미터 추가
         limit: int = 20,
     ) -> Dict[str, Any]:
         """
@@ -45,6 +46,10 @@ class SearchService:
             days_limit: 검색 기간 제한 (일)
             limit: 결과 개수 제한
         """
+        # 호환성을 위한 days 파라미터 처리
+        if days is not None:
+            days_limit = days
+
         if not query or len(query.strip()) < 2:
             return {
                 "total_results": 0,

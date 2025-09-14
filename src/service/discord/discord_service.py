@@ -182,51 +182,34 @@ class DiscordService(IDiscordService):
             guild=discord.Object(id=int(settings.discord_guild_id)),
         )
         @app_commands.describe(
-            person="담당자 이름 (소현, 정빈, 동훈 중 선택)",
-            name="태스크 제목",
-            priority="우선순위 (High, Medium, Low 중 선택)",
-            deadline="마감일 YYYY-MM-DD (필수)",
-            days="마감까지 남은 일수 (필수, deadline과 중복 사용 불가)",
-            task_type="태스크 타입 (🐞 Bug, 💬 Feature request, 💅 Polish 중 선택)",
+            name="태스크 제목 (필수)",
+            person="담당자 이름 (소현, 정빈, 동훈 중 선택, 선택사항)",
+            priority="우선순위 (High, Medium, Low 중 선택, 선택사항)",
+            days="마감까지 남은 일수 (선택사항, 기본값: 0일 = 오늘)",
+            task_type="태스크 타입 (🐞 Bug, 💬 Feature request, 💅 Polish 중 선택, 선택사항)",
         )
         @track_discord_command("task")
         async def task_command(
             interaction: discord.Interaction,
-            person: str,
-            name: str,
+            name: str,  # 제목은 필수
+            person: Optional[str] = None,  # 담당자는 선택사항
             priority: Optional[str] = None,
-            deadline: Optional[str] = None,
-            days: Optional[int] = None,
+            days: Optional[int] = None,  # 마감까지 남은 일수
             task_type: Optional[str] = None,
         ):
             """Factory Tracker 태스크 생성 명령어"""
-            # due date 검증
-            if not deadline and not days:
-                await interaction.response.send_message(
-                    "❌ 마감일(deadline) 또는 남은 일수(days) 중 하나는 필수입니다.",
-                    ephemeral=True,
-                )
-                return
+            # days를 deadline으로 변환 (기본값: 0일 = 오늘)
+            from datetime import datetime, timedelta
 
-            if deadline and days:
-                await interaction.response.send_message(
-                    "❌ deadline과 days는 동시에 사용할 수 없습니다. 하나만 선택해주세요.",
-                    ephemeral=True,
-                )
-                return
-
-            # days가 제공된 경우 deadline으로 변환
-            if days:
-                from datetime import datetime, timedelta
-
-                deadline = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
+            days = days if days is not None else 0  # 기본값: 0일 (오늘)
+            deadline = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d")
 
             await self._handle_command_common(
                 interaction,
                 CommandType.TASK,
                 {
-                    "person": person,
-                    "name": name,
+                    "person": person,    # person 그대로 사용
+                    "title": name,       # name -> title로 매핑
                     "priority": priority,
                     "deadline": deadline,
                     "task_type": task_type,
@@ -639,6 +622,157 @@ class DiscordService(IDiscordService):
                 {
                     "title": title,
                     "doc_type": doc_type,
+                },
+            )
+
+        # CRUD Update/Archive 명령어들
+        @self.bot.tree.command(
+            name="update_task",
+            description="태스크 정보 업데이트",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @app_commands.describe(
+            page_id="업데이트할 태스크의 Notion 페이지 ID",
+            title="새로운 태스크 제목 (선택사항)",
+            priority="새로운 우선순위 (High, Medium, Low)",
+            person="새로운 담당자 (선택사항)",
+            status="새로운 상태 (선택사항)",
+        )
+        @track_discord_command("update_task")
+        async def update_task_command(
+            interaction: discord.Interaction,
+            page_id: str,
+            title: Optional[str] = None,
+            priority: Optional[str] = None,
+            person: Optional[str] = None,
+            status: Optional[str] = None,
+        ):
+            """태스크 업데이트 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.UPDATE_TASK,
+                {
+                    "page_id": page_id,
+                    "title": title,
+                    "priority": priority,
+                    "person": person,
+                    "status": status,
+                },
+            )
+
+        @self.bot.tree.command(
+            name="update_meeting",
+            description="회의록 정보 업데이트",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @app_commands.describe(
+            page_id="업데이트할 회의록의 Notion 페이지 ID",
+            title="새로운 회의 제목 (선택사항)",
+            participants="새로운 참석자 목록 (선택사항)",
+            meeting_type="새로운 회의 유형 (선택사항)",
+            status="새로운 상태 (선택사항)",
+        )
+        @track_discord_command("update_meeting")
+        async def update_meeting_command(
+            interaction: discord.Interaction,
+            page_id: str,
+            title: Optional[str] = None,
+            participants: Optional[str] = None,
+            meeting_type: Optional[str] = None,
+            status: Optional[str] = None,
+        ):
+            """회의록 업데이트 명령어"""
+            # 참석자 목록 파싱
+            participants_list = []
+            if participants:
+                participants_list = [
+                    p.strip() for p in participants.split(",") if p.strip()
+                ]
+
+            await self._handle_command_common(
+                interaction,
+                CommandType.UPDATE_MEETING,
+                {
+                    "page_id": page_id,
+                    "title": title,
+                    "participants": participants_list,
+                    "meeting_type": meeting_type,
+                    "status": status,
+                },
+            )
+
+        @self.bot.tree.command(
+            name="update_document",
+            description="문서 정보 업데이트",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @app_commands.describe(
+            page_id="업데이트할 문서의 Notion 페이지 ID",
+            title="새로운 문서 제목 (선택사항)",
+            doc_type="새로운 문서 유형 (선택사항)",
+            status="새로운 상태 (선택사항)",
+        )
+        @track_discord_command("update_document")
+        async def update_document_command(
+            interaction: discord.Interaction,
+            page_id: str,
+            title: Optional[str] = None,
+            doc_type: Optional[str] = None,
+            status: Optional[str] = None,
+        ):
+            """문서 업데이트 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.UPDATE_DOCUMENT,
+                {
+                    "page_id": page_id,
+                    "title": title,
+                    "doc_type": doc_type,
+                    "status": status,
+                },
+            )
+
+        @self.bot.tree.command(
+            name="archive",
+            description="Notion 페이지를 아카이브 (삭제)",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @app_commands.describe(
+            page_id="아카이브할 Notion 페이지 ID",
+        )
+        @track_discord_command("archive_page")
+        async def archive_command(
+            interaction: discord.Interaction,
+            page_id: str,
+        ):
+            """페이지 아카이브 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.ARCHIVE_PAGE,
+                {
+                    "page_id": page_id,
+                },
+            )
+
+        @self.bot.tree.command(
+            name="restore",
+            description="아카이브된 Notion 페이지 복구",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @app_commands.describe(
+            page_id="복구할 Notion 페이지 ID",
+        )
+        @track_discord_command("restore_page")
+        async def restore_command(
+            interaction: discord.Interaction,
+            page_id: str,
+        ):
+            """페이지 복구 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.RESTORE_PAGE,
+                {
+                    "page_id": page_id,
                 },
             )
 

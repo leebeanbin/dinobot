@@ -15,7 +15,7 @@ from src.core.dynamic_config import dynamic_config_manager, CommandMapping
 from src.service.notion.notion_service import NotionService
 from src.service.discord.discord_service import DiscordService
 from src.dto.discord.discord_dtos import DiscordMessageResponseDTO
-from src.dto.common.enums import ResponseType
+from src.dto.common.enums import ResponseType, MessageType
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class DynamicCommandService:
 
         # 명령어 패턴 정의
         self.command_patterns = {
-            "meeting": r"/meeting\s+title:(.+?)(?:\s+meeting_time:(.+?))?(?:\s+participants:(.+?))?(?:\s+(.+))?$",
+            "meeting": r"/meeting\s+title:(.+?)(?:\s+meeting_date:(.+?))?(?:\s+participants:(.+?))?(?:\s+(.+))?$",
             "board": r"/board\s+title:(.+?)(?:\s+doc_type:(.+?))?(?:\s+(.+))?$",
             "factory": r"/factory\s+title:(.+?)(?:\s+priority:(.+?))?(?:\s+assignee:(.+?))?(?:\s+(.+))?$",
         }
@@ -61,7 +61,7 @@ class DynamicCommandService:
             if not parsed_command:
                 return DiscordMessageResponseDTO(
                     content="❌ 잘못된 명령어 형식입니다. `/help`를 입력하여 사용법을 확인하세요.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             command_name = parsed_command["command"]
@@ -75,14 +75,14 @@ class DynamicCommandService:
             else:
                 return DiscordMessageResponseDTO(
                     content=f"❌ 알 수 없는 명령어: `{command_name}`",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
         except Exception as e:
             logger.error(f"명령어 처리 실패: {e}")
             return DiscordMessageResponseDTO(
                 content=f"❌ 명령어 처리 중 오류가 발생했습니다: {str(e)}",
-                response_type=ResponseType.ERROR,
+                message_type=MessageType.ERROR_NOTIFICATION,
             )
 
     def _parse_command(self, command_text: str) -> Optional[Dict[str, Any]]:
@@ -98,7 +98,7 @@ class DynamicCommandService:
                 if command_name == "meeting":
                     parameters = {
                         "title": groups[0].strip(),
-                        "meeting_time": groups[1].strip() if groups[1] else None,
+                        "meeting_date": groups[1].strip() if groups[1] else None,
                         "participants": (
                             groups[2].strip().split(",") if groups[2] else []
                         ),
@@ -132,7 +132,7 @@ class DynamicCommandService:
             if not mapping:
                 return DiscordMessageResponseDTO(
                     content="❌ 회의 명령어 설정을 찾을 수 없습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 입력 데이터 준비
@@ -142,7 +142,7 @@ class DynamicCommandService:
                     parameters["participants"] if parameters["participants"] else []
                 ),
                 "Meeting Time": (
-                    parameters["meeting_time"] if parameters["meeting_time"] else None
+                    parameters["meeting_date"] if parameters["meeting_date"] else None
                 ),
             }
 
@@ -155,7 +155,7 @@ class DynamicCommandService:
                     validation_result["errors"]
                 )
                 return DiscordMessageResponseDTO(
-                    content=error_message, response_type=ResponseType.ERROR
+                    content=error_message, message_type=MessageType.ERROR_NOTIFICATION
                 )
 
             # Notion 페이지 생성
@@ -168,17 +168,17 @@ class DynamicCommandService:
             if not page_response:
                 return DiscordMessageResponseDTO(
                     content="❌ Notion 페이지 생성에 실패했습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # Discord 이벤트 생성 (시간이 지정된 경우)
             discord_event_created = False
-            if parameters["meeting_time"]:
+            if parameters["meeting_date"]:
                 try:
                     discord_event_created = await self.discord_service.create_discord_event(
                         title=processed_data["Name"],
                         description=f"Notion 페이지: {page_response.get('url', '')}",
-                        start_time=parameters["meeting_time"],
+                        start_time=parameters["meeting_date"],
                         end_time=None,  # 기본 1시간 후
                         participants=processed_data["Participants"],
                     )
@@ -195,20 +195,20 @@ class DynamicCommandService:
 
             if discord_event_created:
                 response_content += f"📅 **Discord 이벤트**: 생성됨\n"
-            elif parameters["meeting_time"]:
+            elif parameters["meeting_date"]:
                 response_content += (
                     f"⚠️ **Discord 이벤트**: 생성 실패 (시간 형식을 확인해주세요)\n"
                 )
 
             return DiscordMessageResponseDTO(
-                content=response_content, response_type=ResponseType.SUCCESS
+                content=response_content, message_type=MessageType.SUCCESS_NOTIFICATION
             )
 
         except Exception as e:
             logger.error(f"회의 명령어 처리 실패: {e}")
             return DiscordMessageResponseDTO(
                 content=f"❌ 회의록 생성 중 오류가 발생했습니다: {str(e)}",
-                response_type=ResponseType.ERROR,
+                message_type=MessageType.ERROR_NOTIFICATION,
             )
 
     async def _handle_board_command(
@@ -221,7 +221,7 @@ class DynamicCommandService:
             if not mapping:
                 return DiscordMessageResponseDTO(
                     content="❌ 보드 명령어 설정을 찾을 수 없습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 입력 데이터 준비
@@ -236,7 +236,7 @@ class DynamicCommandService:
                     validation_result["errors"]
                 )
                 return DiscordMessageResponseDTO(
-                    content=error_message, response_type=ResponseType.ERROR
+                    content=error_message, message_type=MessageType.ERROR_NOTIFICATION
                 )
 
             # Notion 페이지 생성
@@ -248,7 +248,7 @@ class DynamicCommandService:
             if not page_response:
                 return DiscordMessageResponseDTO(
                     content="❌ Notion 페이지 생성에 실패했습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 응답 메시지 생성
@@ -260,14 +260,14 @@ class DynamicCommandService:
             )
 
             return DiscordMessageResponseDTO(
-                content=response_content, response_type=ResponseType.SUCCESS
+                content=response_content, message_type=MessageType.SUCCESS_NOTIFICATION
             )
 
         except Exception as e:
             logger.error(f"보드 명령어 처리 실패: {e}")
             return DiscordMessageResponseDTO(
                 content=f"❌ 문서 생성 중 오류가 발생했습니다: {str(e)}",
-                response_type=ResponseType.ERROR,
+                message_type=MessageType.ERROR_NOTIFICATION,
             )
 
     async def _handle_factory_command(
@@ -280,12 +280,19 @@ class DynamicCommandService:
             if not mapping:
                 return DiscordMessageResponseDTO(
                     content="❌ 팩토리 명령어 설정을 찾을 수 없습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 입력 데이터 준비
+            task_title = parameters.get("title") or parameters.get("name")
+            if not task_title:
+                return DiscordMessageResponseDTO(
+                    content="❌ 태스크 제목이 필요합니다. (title 또는 name 파라미터 필요)",
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                )
+            
             input_data = {
-                "Task name": parameters["title"],
+                "Task name": task_title,
                 "Priority": parameters["priority"],
                 "Assignee": parameters["assignee"] if parameters["assignee"] else None,
             }
@@ -299,20 +306,19 @@ class DynamicCommandService:
                     validation_result["errors"]
                 )
                 return DiscordMessageResponseDTO(
-                    content=error_message, response_type=ResponseType.ERROR
+                    content=error_message, message_type=MessageType.ERROR_NOTIFICATION
                 )
 
             # Notion 페이지 생성 (팩토리 전용 메서드 필요)
             processed_data = validation_result["processed_data"]
 
             # Factory Tracker DB에 페이지 생성
-            factory_db_id = await dynamic_config_manager.config_manager.get(
-                "FACTORY_TRACKER_DB_ID"
-            )
+            from src.core.config_manager import config_manager
+            factory_db_id = await config_manager.get("FACTORY_TRACKER_DB_ID")
             if not factory_db_id:
                 return DiscordMessageResponseDTO(
                     content="❌ Factory Tracker Database ID가 설정되지 않았습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 데이터 소스 ID 가져오기
@@ -322,7 +328,7 @@ class DynamicCommandService:
             if not data_source_id:
                 return DiscordMessageResponseDTO(
                     content="❌ Factory Tracker Database의 데이터 소스를 찾을 수 없습니다.",
-                    response_type=ResponseType.ERROR,
+                    message_type=MessageType.ERROR_NOTIFICATION,
                 )
 
             # 페이지 생성
@@ -360,14 +366,14 @@ class DynamicCommandService:
             )
 
             return DiscordMessageResponseDTO(
-                content=response_content, response_type=ResponseType.SUCCESS
+                content=response_content, message_type=MessageType.SUCCESS_NOTIFICATION
             )
 
         except Exception as e:
             logger.error(f"팩토리 명령어 처리 실패: {e}")
             return DiscordMessageResponseDTO(
                 content=f"❌ 작업 생성 중 오류가 발생했습니다: {str(e)}",
-                response_type=ResponseType.ERROR,
+                message_type=MessageType.ERROR_NOTIFICATION,
             )
 
     async def get_command_help(self, command: str = None) -> DiscordMessageResponseDTO:
@@ -379,7 +385,7 @@ class DynamicCommandService:
                 if "error" in help_info:
                     return DiscordMessageResponseDTO(
                         content=f"❌ {help_info['error']}",
-                        response_type=ResponseType.ERROR,
+                        message_type=MessageType.ERROR_NOTIFICATION,
                     )
 
                 content = f"📖 **{command.upper()} 명령어 도움말**\n\n"
@@ -417,7 +423,7 @@ class DynamicCommandService:
                         content += f"    → {example['result']}\n\n"
 
                 return DiscordMessageResponseDTO(
-                    content=content, response_type=ResponseType.INFO
+                    content=content, message_type=MessageType.COMMAND_RESPONSE
                 )
             else:
                 # 전체 명령어 목록
@@ -432,14 +438,14 @@ class DynamicCommandService:
                 content += "\n💡 특정 명령어의 자세한 사용법을 보려면 `/help {명령어}`를 입력하세요."
 
                 return DiscordMessageResponseDTO(
-                    content=content, response_type=ResponseType.INFO
+                    content=content, message_type=MessageType.COMMAND_RESPONSE
                 )
 
         except Exception as e:
             logger.error(f"도움말 생성 실패: {e}")
             return DiscordMessageResponseDTO(
                 content=f"❌ 도움말 생성 중 오류가 발생했습니다: {str(e)}",
-                response_type=ResponseType.ERROR,
+                message_type=MessageType.ERROR_NOTIFICATION,
             )
 
 

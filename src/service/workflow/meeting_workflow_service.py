@@ -66,14 +66,14 @@ class MeetingWorkflowService(BaseWorkflowService):
         self, request: DiscordCommandRequestDTO
     ) -> Optional[DiscordMessageResponseDTO]:
         """회의 파라미터 유효성 검증"""
-        title = request.parameters.get("title")
+        title = request.parameters.get("title") or request.parameters.get("name")
         meeting_date = request.parameters.get("meeting_date")
         participants = request.parameters.get("participants", [])
 
         if not title:
             return DiscordMessageResponseDTO(
                 message_type=MessageType.ERROR_NOTIFICATION,
-                content="❌ 회의록 제목이 필요합니다.",
+                content="❌ 회의록 제목이 필요합니다. (title 또는 name 파라미터 필요)",
                 is_ephemeral=True,
             )
 
@@ -101,7 +101,8 @@ class MeetingWorkflowService(BaseWorkflowService):
         if isinstance(participants, str):
             participants = [p.strip() for p in participants.split(",")]
 
-        valid_persons = ["소현", "정빈", "동훈"]
+        from src.core.constants import VALID_PERSONS
+        valid_persons = VALID_PERSONS
         invalid_participants = [p for p in participants if p not in valid_persons]
         if invalid_participants:
             return DiscordMessageResponseDTO(
@@ -118,7 +119,7 @@ class MeetingWorkflowService(BaseWorkflowService):
         self, request: DiscordCommandRequestDTO
     ) -> MeetingCreateRequestDTO:
         """회의록 요청 DTO 구성"""
-        title = request.parameters.get("title")
+        title = request.parameters.get("title") or request.parameters.get("name")
         participants = request.parameters.get("participants", [])
 
         if isinstance(participants, str):
@@ -338,7 +339,7 @@ class MeetingWorkflowService(BaseWorkflowService):
         discord_event_created: bool,
     ) -> DiscordMessageResponseDTO:
         """성공 응답 생성"""
-        title = request.parameters.get("title")
+        title = request.parameters.get("title") or request.parameters.get("name")
         meeting_date_str = request.parameters.get("meeting_date")
 
         response_content = (

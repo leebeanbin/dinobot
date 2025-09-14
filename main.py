@@ -416,6 +416,17 @@ class ServiceManager(IServiceManager):
                 return await self._task_stats_workflow(request)
             elif request.command_type == CommandType.SEARCH:
                 return await self._search_workflow(request)
+            # CRUD Update/Archive 워크플로우들
+            elif request.command_type == CommandType.UPDATE_TASK:
+                return await self._update_task_workflow(request)
+            elif request.command_type == CommandType.UPDATE_MEETING:
+                return await self._update_meeting_workflow(request)
+            elif request.command_type == CommandType.UPDATE_DOCUMENT:
+                return await self._update_document_workflow(request)
+            elif request.command_type == CommandType.ARCHIVE_PAGE:
+                return await self._archive_page_workflow(request)
+            elif request.command_type == CommandType.RESTORE_PAGE:
+                return await self._restore_page_workflow(request)
             else:
                 return DiscordMessageResponseDTO(
                     message_type=MessageType.ERROR_NOTIFICATION,
@@ -437,20 +448,20 @@ class ServiceManager(IServiceManager):
         """태스크 생성 전체 워크플로우"""
         try:
             # 1. 필수 파라미터 검증
-            base_title = request.parameters.get("name")
-            person = request.parameters.get("person")
+            base_title = request.parameters.get("title") or request.parameters.get("name")
+            person = request.parameters.get("person") or request.parameters.get("assignee")
 
             if not base_title:
                 return DiscordMessageResponseDTO(
                     message_type=MessageType.ERROR_NOTIFICATION,
-                    content="❌ Task 제목이 필요합니다.",
+                    content="❌ 태스크 제목이 필요합니다. (title 또는 name 파라미터 필요)",
                     is_ephemeral=True,
                 )
 
             if not person:
                 return DiscordMessageResponseDTO(
                     message_type=MessageType.ERROR_NOTIFICATION,
-                    content="❌ 담당자(person)가 필요합니다. 사용 가능한 값: 소현, 정빈, 동훈",
+                    content="❌ 담당자(person 또는 assignee)가 필요합니다. 사용 가능한 값: 소현, 정빈, 동훈",
                     is_ephemeral=True,
                 )
 
@@ -625,7 +636,7 @@ class ServiceManager(IServiceManager):
         """회의록 생성 전체 워크플로우"""
         try:
             # 1. 필수 파라미터 검증
-            base_title = request.parameters.get("title")
+            base_title = request.parameters.get("title") or request.parameters.get("name")
             meeting_time = request.parameters.get("meeting_date")
             participants = request.parameters.get("participants", [])
 
@@ -904,7 +915,7 @@ class ServiceManager(IServiceManager):
         """문서 생성 워크플로우 (Board DB)"""
         try:
             # 요청에서 필수 파라미터 추출
-            title = request.parameters.get("title")
+            title = request.parameters.get("title") or request.parameters.get("name")
             doc_type = request.parameters.get("doc_type", "개발 문서")  # 기본값
 
             if not title:
@@ -1965,6 +1976,236 @@ class ServiceManager(IServiceManager):
             return DiscordMessageResponseDTO(
                 message_type=MessageType.ERROR_NOTIFICATION,
                 content="❌ 검색 중 오류가 발생했습니다.",
+                is_ephemeral=True,
+            )
+
+    async def _update_task_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """태스크 업데이트 워크플로우"""
+        try:
+            page_id = request.parameters.get("page_id")
+            if not page_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 ID가 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            notion_service = self._service_manager.get_service("notion")
+
+            # 파라미터 추출
+            title = request.parameters.get("title")
+            priority = request.parameters.get("priority")
+            assignee = request.parameters.get("person")
+            status = request.parameters.get("status")
+
+            # 업데이트 실행
+            result = await notion_service.update_task_page(
+                page_id=page_id,
+                title=title,
+                priority=priority,
+                assignee=assignee,
+                status=status
+            )
+
+            if result:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.COMMAND_RESPONSE,
+                    title="태스크 업데이트 완료",
+                    content=f"✅ 태스크 페이지가 성공적으로 업데이트되었습니다.\n🔗 페이지 ID: {page_id}",
+                    is_embed=True,
+                    is_ephemeral=True,
+                )
+            else:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 태스크 업데이트에 실패했습니다.",
+                    is_ephemeral=True,
+                )
+        except Exception as e:
+            logger.error(f"❌ 태스크 업데이트 워크플로우 실패: {e}")
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content=f"❌ 태스크 업데이트 실패: {str(e)}",
+                is_ephemeral=True,
+            )
+
+    async def _update_meeting_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """회의록 업데이트 워크플로우"""
+        try:
+            page_id = request.parameters.get("page_id")
+            if not page_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 ID가 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            notion_service = self._service_manager.get_service("notion")
+
+            # 파라미터 추출
+            title = request.parameters.get("title")
+            participants = request.parameters.get("participants", [])
+            meeting_type = request.parameters.get("meeting_type")
+            status = request.parameters.get("status")
+
+            # 업데이트 실행
+            result = await notion_service.update_meeting_page(
+                page_id=page_id,
+                title=title,
+                participants=participants,
+                meeting_type=meeting_type,
+                status=status
+            )
+
+            if result:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.COMMAND_RESPONSE,
+                    title="회의록 업데이트 완료",
+                    content=f"✅ 회의록 페이지가 성공적으로 업데이트되었습니다.\n🔗 페이지 ID: {page_id}",
+                    is_embed=True,
+                    is_ephemeral=True,
+                )
+            else:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 회의록 업데이트에 실패했습니다.",
+                    is_ephemeral=True,
+                )
+        except Exception as e:
+            logger.error(f"❌ 회의록 업데이트 워크플로우 실패: {e}")
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content=f"❌ 회의록 업데이트 실패: {str(e)}",
+                is_ephemeral=True,
+            )
+
+    async def _update_document_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """문서 업데이트 워크플로우"""
+        try:
+            page_id = request.parameters.get("page_id")
+            if not page_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 ID가 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            notion_service = self._service_manager.get_service("notion")
+
+            # 파라미터 추출
+            title = request.parameters.get("title")
+            doc_type = request.parameters.get("doc_type")
+            status = request.parameters.get("status")
+
+            # 업데이트 실행
+            result = await notion_service.update_document_page(
+                page_id=page_id,
+                title=title,
+                doc_type=doc_type,
+                status=status
+            )
+
+            if result:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.COMMAND_RESPONSE,
+                    title="문서 업데이트 완료",
+                    content=f"✅ 문서 페이지가 성공적으로 업데이트되었습니다.\n🔗 페이지 ID: {page_id}",
+                    is_embed=True,
+                    is_ephemeral=True,
+                )
+            else:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 문서 업데이트에 실패했습니다.",
+                    is_ephemeral=True,
+                )
+        except Exception as e:
+            logger.error(f"❌ 문서 업데이트 워크플로우 실패: {e}")
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content=f"❌ 문서 업데이트 실패: {str(e)}",
+                is_ephemeral=True,
+            )
+
+    async def _archive_page_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """페이지 아카이브 워크플로우"""
+        try:
+            page_id = request.parameters.get("page_id")
+            if not page_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 ID가 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            notion_service = self._service_manager.get_service("notion")
+            success = await notion_service.archive_page(page_id)
+
+            if success:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.COMMAND_RESPONSE,
+                    title="페이지 아카이브 완료",
+                    content=f"🗑️ 페이지가 성공적으로 아카이브되었습니다.\n📝 페이지 ID: {page_id}\n💡 `/restore {page_id}` 명령어로 복구할 수 있습니다.",
+                    is_embed=True,
+                    is_ephemeral=True,
+                )
+            else:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 아카이브에 실패했습니다.",
+                    is_ephemeral=True,
+                )
+        except Exception as e:
+            logger.error(f"❌ 페이지 아카이브 워크플로우 실패: {e}")
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content=f"❌ 페이지 아카이브 실패: {str(e)}",
+                is_ephemeral=True,
+            )
+
+    async def _restore_page_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """페이지 복구 워크플로우"""
+        try:
+            page_id = request.parameters.get("page_id")
+            if not page_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 ID가 필요합니다.",
+                    is_ephemeral=True,
+                )
+
+            notion_service = self._service_manager.get_service("notion")
+            success = await notion_service.restore_page(page_id)
+
+            if success:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.COMMAND_RESPONSE,
+                    title="페이지 복구 완료",
+                    content=f"🔄 페이지가 성공적으로 복구되었습니다.\n📝 페이지 ID: {page_id}",
+                    is_embed=True,
+                    is_ephemeral=True,
+                )
+            else:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 페이지 복구에 실패했습니다.",
+                    is_ephemeral=True,
+                )
+        except Exception as e:
+            logger.error(f"❌ 페이지 복구 워크플로우 실패: {e}")
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content=f"❌ 페이지 복구 실패: {str(e)}",
                 is_ephemeral=True,
             )
 
