@@ -284,8 +284,8 @@ class SimpleStatsService:
         )
         return stats
 
-    @safe_execution("get_user_productivity")
-    async def get_user_productivity(
+    @safe_execution("get_user_productivity_stats")
+    async def get_user_productivity_stats(
         self, user_id: str, days: int = 30
     ) -> Dict[str, Any]:
         """사용자별 생산성 분석"""
@@ -354,8 +354,8 @@ class SimpleStatsService:
         )
         return stats
 
-    @safe_execution("get_team_comparison")
-    async def get_team_comparison(self, days: int = 30) -> Dict[str, Any]:
+    @safe_execution("get_team_comparison_stats")
+    async def get_team_comparison_stats(self, days: int = 30) -> Dict[str, Any]:
         """팀 멤버별 활동 비교"""
         since_date = datetime.now() - timedelta(days=days)
 
@@ -422,8 +422,8 @@ class SimpleStatsService:
         self, days: int = 30, status_filter: str = None, user_filter: str = None
     ) -> Dict[str, Any]:
         """Task 완료 통계 (Notion API와 연동하여 실제 상태 확인)"""
-        from ..services.notion import notion_service
-        from ..core.config import settings
+        from src.core.config import settings
+        # notion_service는 ServiceManager를 통해 접근
 
         since_date = datetime.now() - timedelta(days=days)
 
@@ -461,6 +461,10 @@ class SimpleStatsService:
         # 각 Task의 현재 상태를 Notion에서 확인
         for task in task_pages:
             try:
+                # ServiceManager를 통해 notion_service 접근
+                from src.core.service_manager import service_manager
+                notion_service = service_manager.get_service("notion")
+
                 # Notion API로 현재 상태 확인
                 notion_page = await notion_service.notion_client.pages.retrieve(
                     page_id=task["page_id"]
@@ -572,8 +576,8 @@ class SimpleStatsService:
         )
         return stats
 
-    @safe_execution("get_activity_trends")
-    async def get_activity_trends(self, days: int = 14) -> Dict[str, Any]:
+    @safe_execution("get_activity_trends_stats")
+    async def get_activity_trends_stats(self, days: int = 14) -> Dict[str, Any]:
         """활동 트렌드 분석 (최근 N일)"""
         since_date = datetime.now() - timedelta(days=days)
 

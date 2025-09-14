@@ -57,12 +57,14 @@ async def config_management_page(request: Request):
         # 모든 설정 정보 가져오기
         all_configs = await config_manager.get_all_configs()
         missing_configs = config_manager.get_missing_required_configs()
-        
+
         # 디버깅: 설정값 로그
         logger.info(f"🔍 로드된 설정값들: {list(all_configs.keys())}")
         for key, value in all_configs.items():
             if value is not None:
-                logger.info(f"✅ {key}: {'*' * min(len(str(value)), 10) if 'TOKEN' in key or 'SECRET' in key else value}")
+                logger.info(
+                    f"✅ {key}: {'*' * min(len(str(value)), 10) if 'TOKEN' in key or 'SECRET' in key else value}"
+                )
             else:
                 logger.info(f"❌ {key}: None")
 
@@ -88,108 +90,150 @@ async def config_management_page(request: Request):
             html_content = f.read()
 
         # 설정 상태 확인
-        discord_configured = bool(all_configs.get('DISCORD_TOKEN') and all_configs.get('DISCORD_APP_ID'))
-        notion_configured = bool(all_configs.get('NOTION_TOKEN'))
-        webhook_configured = bool(all_configs.get('WEBHOOK_SECRET'))
-        
+        discord_configured = bool(
+            all_configs.get("DISCORD_TOKEN") and all_configs.get("DISCORD_APP_ID")
+        )
+        notion_configured = bool(all_configs.get("NOTION_TOKEN"))
+        webhook_configured = bool(all_configs.get("WEBHOOK_SECRET"))
+
         # 주요 설정 카테고리별 완료 상태 확인
         required_categories = [
             discord_configured,  # Discord 연동
-            notion_configured,   # Notion 연동  
-            webhook_configured   # 보안 설정
+            notion_configured,  # Notion 연동
+            webhook_configured,  # 보안 설정
         ]
-        
+
         # 진행률 계산 (완료된 카테고리 / 전체 카테고리)
         configured_count = sum(required_categories)
         total_count = len(required_categories)
-        progress_percentage = int((configured_count / total_count * 100) if total_count > 0 else 0)
-        
+        progress_percentage = int(
+            (configured_count / total_count * 100) if total_count > 0 else 0
+        )
+
         # Helper function to safely convert config values to strings
         def safe_config_str(value):
-            return str(value) if value is not None else ''
-        
-        html_content = html_content.replace(
-            "{{ configured_configs }}", str(configured_count)
-        ).replace(
-            "{{ total_configs }}", str(total_count)
-        ).replace(
-            "{{ config.discord_token }}", safe_config_str(all_configs.get('DISCORD_TOKEN'))
-        ).replace(
-            "{{ config.discord_app_id }}", safe_config_str(all_configs.get('DISCORD_APP_ID'))
-        ).replace(
-            "{{ config.discord_guild_id }}", safe_config_str(all_configs.get('DISCORD_GUILD_ID'))
-        ).replace(
-            "{{ config.notion_token }}", safe_config_str(all_configs.get('NOTION_TOKEN'))
-        ).replace(
-            "{{ config.factory_tracker_db_id }}", safe_config_str(all_configs.get('FACTORY_TRACKER_DB_ID'))
-        ).replace(
-            "{{ config.board_db_id }}", safe_config_str(all_configs.get('BOARD_DB_ID'))
-        ).replace(
-            "{{ config.webhook_secret }}", safe_config_str(all_configs.get('WEBHOOK_SECRET'))
-        ).replace(
-            "{{ config.discord_token or '' }}", safe_config_str(all_configs.get('DISCORD_TOKEN'))
-        ).replace(
-            "{{ config.discord_app_id or '' }}", safe_config_str(all_configs.get('DISCORD_APP_ID'))
-        ).replace(
-            "{{ config.discord_guild_id or '' }}", safe_config_str(all_configs.get('DISCORD_GUILD_ID'))
-        ).replace(
-            "{{ config.notion_token or '' }}", safe_config_str(all_configs.get('NOTION_TOKEN'))
-        ).replace(
-            "{{ config.webhook_secret or '' }}", safe_config_str(all_configs.get('WEBHOOK_SECRET'))
+            return str(value) if value is not None else ""
+
+        html_content = (
+            html_content.replace("{{ configured_configs }}", str(configured_count))
+            .replace("{{ total_configs }}", str(total_count))
+            .replace(
+                "{{ config.discord_token }}",
+                safe_config_str(all_configs.get("DISCORD_TOKEN")),
+            )
+            .replace(
+                "{{ config.discord_app_id }}",
+                safe_config_str(all_configs.get("DISCORD_APP_ID")),
+            )
+            .replace(
+                "{{ config.discord_guild_id }}",
+                safe_config_str(all_configs.get("DISCORD_GUILD_ID")),
+            )
+            .replace(
+                "{{ config.notion_token }}",
+                safe_config_str(all_configs.get("NOTION_TOKEN")),
+            )
+            .replace(
+                "{{ config.factory_tracker_db_id }}",
+                safe_config_str(all_configs.get("FACTORY_TRACKER_DB_ID")),
+            )
+            .replace(
+                "{{ config.board_db_id }}",
+                safe_config_str(all_configs.get("BOARD_DB_ID")),
+            )
+            .replace(
+                "{{ config.webhook_secret }}",
+                safe_config_str(all_configs.get("WEBHOOK_SECRET")),
+            )
+            .replace(
+                "{{ config.discord_token or '' }}",
+                safe_config_str(all_configs.get("DISCORD_TOKEN")),
+            )
+            .replace(
+                "{{ config.discord_app_id or '' }}",
+                safe_config_str(all_configs.get("DISCORD_APP_ID")),
+            )
+            .replace(
+                "{{ config.discord_guild_id or '' }}",
+                safe_config_str(all_configs.get("DISCORD_GUILD_ID")),
+            )
+            .replace(
+                "{{ config.notion_token or '' }}",
+                safe_config_str(all_configs.get("NOTION_TOKEN")),
+            )
+            .replace(
+                "{{ config.webhook_secret or '' }}",
+                safe_config_str(all_configs.get("WEBHOOK_SECRET")),
+            )
         )
-        
+
         # 복잡한 진행률 템플릿 문법 처리
         html_content = html_content.replace(
             '{{ "%.0f"|format((configured_configs / total_configs * 100) if total_configs > 0 else 0) }}',
-            str(progress_percentage)
+            str(progress_percentage),
         ).replace(
             'data-progress="{{ "%.0f"|format((configured_configs / total_configs * 100) if total_configs > 0 else 0) }}"',
-            f'data-progress="{progress_percentage}"'
+            f'data-progress="{progress_percentage}"',
         )
-        
+
         # Discord 상태 조건문 처리
-        html_content = html_content.replace(
-            "{% if config.discord_token and config.discord_app_id %}completed{% else %}required{% endif %}",
-            "completed" if discord_configured else "required"
-        ).replace(
-            "{% if config.discord_token and config.discord_app_id %}완료{% else %}필수{% endif %}",
-            "완료" if discord_configured else "필수"
-        ).replace(
-            "{% if config.discord_token and config.discord_app_id %}✓{% else %}○{% endif %}",
-            "✓" if discord_configured else "○"
-        ).replace(
-            "{% if not (config.discord_token and config.discord_app_id) %}pending{% endif %}",
-            "pending" if not discord_configured else ""
+        html_content = (
+            html_content.replace(
+                "{% if config.discord_token and config.discord_app_id %}completed{% else %}required{% endif %}",
+                "completed" if discord_configured else "required",
+            )
+            .replace(
+                "{% if config.discord_token and config.discord_app_id %}완료{% else %}필수{% endif %}",
+                "완료" if discord_configured else "필수",
+            )
+            .replace(
+                "{% if config.discord_token and config.discord_app_id %}✓{% else %}○{% endif %}",
+                "✓" if discord_configured else "○",
+            )
+            .replace(
+                "{% if not (config.discord_token and config.discord_app_id) %}pending{% endif %}",
+                "pending" if not discord_configured else "",
+            )
         )
-        
+
         # Notion 상태 조건문 처리
-        html_content = html_content.replace(
-            "{% if config.notion_token %}completed{% else %}required{% endif %}",
-            "completed" if notion_configured else "required"
-        ).replace(
-            "{% if config.notion_token %}완료{% else %}필수{% endif %}",
-            "완료" if notion_configured else "필수"
-        ).replace(
-            "{% if config.notion_token %}✓{% else %}○{% endif %}",
-            "✓" if notion_configured else "○"
-        ).replace(
-            "{% if not config.notion_token %}pending{% endif %}",
-            "pending" if not notion_configured else ""
+        html_content = (
+            html_content.replace(
+                "{% if config.notion_token %}completed{% else %}required{% endif %}",
+                "completed" if notion_configured else "required",
+            )
+            .replace(
+                "{% if config.notion_token %}완료{% else %}필수{% endif %}",
+                "완료" if notion_configured else "필수",
+            )
+            .replace(
+                "{% if config.notion_token %}✓{% else %}○{% endif %}",
+                "✓" if notion_configured else "○",
+            )
+            .replace(
+                "{% if not config.notion_token %}pending{% endif %}",
+                "pending" if not notion_configured else "",
+            )
         )
-        
+
         # Webhook 상태 조건문 처리
-        html_content = html_content.replace(
-            "{% if config.webhook_secret %}completed{% else %}required{% endif %}",
-            "completed" if webhook_configured else "required"
-        ).replace(
-            "{% if config.webhook_secret %}완료{% else %}필수{% endif %}",
-            "완료" if webhook_configured else "필수"
-        ).replace(
-            "{% if config.webhook_secret %}✓{% else %}○{% endif %}",
-            "✓" if webhook_configured else "○"
-        ).replace(
-            "{% if not config.webhook_secret %}pending{% endif %}",
-            "pending" if not webhook_configured else ""
+        html_content = (
+            html_content.replace(
+                "{% if config.webhook_secret %}completed{% else %}required{% endif %}",
+                "completed" if webhook_configured else "required",
+            )
+            .replace(
+                "{% if config.webhook_secret %}완료{% else %}필수{% endif %}",
+                "완료" if webhook_configured else "필수",
+            )
+            .replace(
+                "{% if config.webhook_secret %}✓{% else %}○{% endif %}",
+                "✓" if webhook_configured else "○",
+            )
+            .replace(
+                "{% if not config.webhook_secret %}pending{% endif %}",
+                "pending" if not webhook_configured else "",
+            )
         )
 
         return HTMLResponse(content=html_content)
@@ -354,52 +398,52 @@ async def save_all_configs(request: Request):
     """모든 설정 저장 (동적 데이터베이스 포함)"""
     try:
         data = await request.json()
-        
+
         # 기본 설정 저장
         configs_to_save = [
-            ('DISCORD_TOKEN', data.get('discord_token')),
-            ('DISCORD_APP_ID', data.get('discord_app_id')),
-            ('DISCORD_GUILD_ID', data.get('discord_guild_id')),
-            ('NOTION_TOKEN', data.get('notion_token')),
-            ('WEBHOOK_SECRET', data.get('webhook_secret')),
+            ("DISCORD_TOKEN", data.get("discord_token")),
+            ("DISCORD_APP_ID", data.get("discord_app_id")),
+            ("DISCORD_GUILD_ID", data.get("discord_guild_id")),
+            ("NOTION_TOKEN", data.get("notion_token")),
+            ("WEBHOOK_SECRET", data.get("webhook_secret")),
         ]
-        
+
         saved_count = 0
         for key, value in configs_to_save:
             if value:  # 값이 있을 때만 저장
                 success = await config_manager.set(key, value, "user_input")
                 if success:
                     saved_count += 1
-        
+
         # 동적 데이터베이스 저장
-        databases = data.get('databases', [])
+        databases = data.get("databases", [])
         if databases:
             # 기존 데이터베이스 모두 삭제
             db = config_manager.db
             databases_collection = db["databases"]
             await databases_collection.delete_many({})
-            
+
             # 새 데이터베이스들 저장
             for database in databases:
-                if database.get('name') and database.get('id'):
+                if database.get("name") and database.get("id"):
                     database_doc = {
-                        "name": database['name'],
-                        "id": database['id'],
-                        "description": database.get('description', ''),
+                        "name": database["name"],
+                        "id": database["id"],
+                        "description": database.get("description", ""),
                         "created_at": datetime.now(),
                         "updated_at": datetime.now(),
                     }
                     await databases_collection.insert_one(database_doc)
-            
+
             logger.info(f"✅ {len(databases)}개 데이터베이스 저장 완료")
-        
+
         config_manager.save_all()
         total_saved = saved_count + len(databases)
         return {
             "message": f"{total_saved}개 항목이 성공적으로 저장되었습니다",
             "success": True,
             "saved_count": total_saved,
-            "databases_count": len(databases)
+            "databases_count": len(databases),
         }
     except Exception as e:
         logger.error(f"설정 저장 실패: {e}")
@@ -434,14 +478,40 @@ async def get_config_status():
 async def get_databases():
     """데이터베이스 목록 조회"""
     try:
-        # MongoDB에서 데이터베이스 목록 조회
+        databases = []
+
+        # Factory Tracker DB 추가
+        factory_db_id = await config_manager.get("FACTORY_TRACKER_DB_ID")
+        if factory_db_id:
+            databases.append(
+                {
+                    "name": "Factory Tracker",
+                    "id": factory_db_id,
+                    "description": "작업 및 프로젝트 관리용 데이터베이스",
+                }
+            )
+
+        # Board DB 추가
+        board_db_id = await config_manager.get("BOARD_DB_ID")
+        if board_db_id:
+            databases.append(
+                {
+                    "name": "Board",
+                    "id": board_db_id,
+                    "description": "회의록 및 문서 관리용 데이터베이스",
+                }
+            )
+
+        # MongoDB에서 추가 데이터베이스 목록 조회
         db = config_manager.db
         databases_collection = db["databases"]
-        
+
         # 비동기 cursor를 list로 변환
-        databases = []
         async for doc in databases_collection.find({}, {"_id": 0}):
-            databases.append(doc)
+            # 중복 방지: 이미 추가된 DB ID가 아닌 경우만 추가
+            existing_ids = [db["id"] for db in databases]
+            if doc.get("id") not in existing_ids:
+                databases.append(doc)
 
         return {"success": True, "databases": databases}
     except Exception as e:
@@ -543,54 +613,52 @@ async def test_notion_connection(request: Request):
     """Notion 연결 테스트"""
     try:
         data = await request.json()
-        token = data.get('token')
-        
+        token = data.get("token")
+
         if not token:
             raise HTTPException(status_code=400, detail="토큰이 필요합니다")
-        
+
         # 간단한 Notion API 호출로 연결 테스트
         import httpx
-        
+
         headers = {
-            'Authorization': f'Bearer {token}',
-            'Notion-Version': '2025-09-03',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {token}",
+            "Notion-Version": "2025-09-03",
+            "Content-Type": "application/json",
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                'https://api.notion.com/v1/users/me',
-                headers=headers,
-                timeout=10.0
+                "https://api.notion.com/v1/users/me", headers=headers, timeout=10.0
             )
-            
+
         if response.status_code == 200:
             user_data = response.json()
             return {
                 "success": True,
                 "message": "Notion 연결 성공!",
-                "user_name": user_data.get('name', 'Unknown'),
-                "workspace": user_data.get('type', 'person')
+                "user_name": user_data.get("name", "Unknown"),
+                "workspace": user_data.get("type", "person"),
             }
         else:
             return {
                 "success": False,
                 "message": f"Notion 연결 실패: {response.status_code}",
-                "error": response.text
+                "error": response.text,
             }
-            
+
     except httpx.TimeoutException:
         return {
             "success": False,
             "message": "연결 시간 초과",
-            "error": "Notion API 연결 시간이 초과되었습니다"
+            "error": "Notion API 연결 시간이 초과되었습니다",
         }
     except Exception as e:
         logger.error(f"Notion 연결 테스트 실패: {e}")
         return {
             "success": False,
             "message": "연결 테스트 중 오류 발생",
-            "error": str(e)
+            "error": str(e),
         }
 
 
@@ -600,15 +668,15 @@ async def generate_webhook_secret():
     try:
         import secrets
         import string
-        
+
         # 32자 길이의 안전한 랜덤 문자열 생성
-        alphabet = string.ascii_letters + string.digits + '-_'
-        secret = ''.join(secrets.choice(alphabet) for _ in range(32))
-        
+        alphabet = string.ascii_letters + string.digits + "-_"
+        secret = "".join(secrets.choice(alphabet) for _ in range(32))
+
         return {
             "success": True,
             "secret": secret,
-            "message": "안전한 웹훅 시크릿이 생성되었습니다"
+            "message": "안전한 웹훅 시크릿이 생성되었습니다",
         }
     except Exception as e:
         logger.error(f"웹훅 시크릿 생성 실패: {e}")
@@ -620,68 +688,70 @@ async def test_database_connection(request: Request):
     """Notion 데이터베이스 연결 테스트"""
     try:
         data = await request.json()
-        token = data.get('token')
-        database_id = data.get('database_id')
-        
+        token = data.get("token")
+        database_id = data.get("database_id")
+
         if not token:
             raise HTTPException(status_code=400, detail="토큰이 필요합니다")
-        
+
         if not database_id:
             raise HTTPException(status_code=400, detail="데이터베이스 ID가 필요합니다")
-        
+
         # Notion API로 데이터베이스 정보 조회
         import httpx
-        
+
         headers = {
-            'Authorization': f'Bearer {token}',
-            'Notion-Version': '2025-09-03',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {token}",
+            "Notion-Version": "2025-09-03",
+            "Content-Type": "application/json",
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f'https://api.notion.com/v1/databases/{database_id}',
+                f"https://api.notion.com/v1/databases/{database_id}",
                 headers=headers,
-                timeout=10.0
+                timeout=10.0,
             )
-            
+
         if response.status_code == 200:
             db_data = response.json()
             return {
                 "success": True,
                 "message": "데이터베이스 연결 성공!",
-                "database_name": db_data.get('title', [{}])[0].get('plain_text', 'Untitled'),
-                "properties_count": len(db_data.get('properties', {}))
+                "database_name": db_data.get("title", [{}])[0].get(
+                    "plain_text", "Untitled"
+                ),
+                "properties_count": len(db_data.get("properties", {})),
             }
         elif response.status_code == 404:
             return {
                 "success": False,
                 "message": "데이터베이스를 찾을 수 없습니다. ID를 확인해주세요.",
-                "error": "Database not found"
+                "error": "Database not found",
             }
         elif response.status_code == 403:
             return {
                 "success": False,
                 "message": "데이터베이스 접근 권한이 없습니다. Notion 통합에 데이터베이스 권한을 추가해주세요.",
-                "error": "Access denied"
+                "error": "Access denied",
             }
         else:
             return {
                 "success": False,
                 "message": f"Notion API 오류: {response.status_code}",
-                "error": response.text
+                "error": response.text,
             }
-            
+
     except httpx.TimeoutException:
         return {
             "success": False,
             "message": "연결 시간 초과",
-            "error": "Notion API 연결 시간이 초과되었습니다"
+            "error": "Notion API 연결 시간이 초과되었습니다",
         }
     except Exception as e:
         logger.error(f"데이터베이스 연결 테스트 실패: {e}")
         return {
             "success": False,
             "message": "연결 테스트 중 오류 발생",
-            "error": str(e)
+            "error": str(e),
         }
