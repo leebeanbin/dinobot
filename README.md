@@ -96,8 +96,8 @@
 
 ```bash
 # 1️⃣ 저장소 클론
-git clone https://github.com/yourusername/meetupLoader.git
-cd meetupLoader
+git clone https://github.com/leebeanbin/dinobot.git
+cd dinobot
 
 # 2️⃣ 의존성 설치
 poetry install
@@ -307,8 +307,8 @@ poetry run python run.py
 
 #### 1. 저장소 클론
 ```bash
-git clone https://github.com/yourusername/meetupLoader.git
-cd meetupLoader
+git clone https://github.com/leebeanbin/dinobot.git
+cd dinobot
 ```
 
 #### 2. 의존성 설치
@@ -654,7 +654,7 @@ fly deploy
 ### 🏗️ 프로젝트 구조
 
 ```
-meetupLoader/
+dinobot/
 ├── dinobot/                    # 메인 애플리케이션 패키지
 │   ├── core/                       # 핵심 모듈
 │   │   ├── config.py              # 설정 관리
@@ -992,8 +992,8 @@ grep "HTTP Request" logs/dinobot_*.log
 
 **1. Fork & Clone**
 ```bash
-git clone https://github.com/yourusername/meetupLoader.git
-cd meetupLoader
+git clone https://github.com/leebeanbin/dinobot.git
+cd dinobot
 ```
 
 **2. 브랜치 생성**
@@ -1064,7 +1064,7 @@ chore: 빌드/설정 변경
 ```
 MIT License
 
-Copyright (c) 2025 DinoBot
+Copyright (c) 2026 leebeanbin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1096,19 +1096,19 @@ SOFTWARE.
 <td width="33%" align="center">
 
 **Issues**
-[GitHub Issues](https://github.com/yourusername/meetupLoader/issues)
+[GitHub Issues](https://github.com/leebeanbin/dinobot/issues)
 
 </td>
 <td width="33%" align="center">
 
 **Discussions**
-[GitHub Discussions](https://github.com/yourusername/meetupLoader/discussions)
+[GitHub Discussions](https://github.com/leebeanbin/dinobot/discussions)
 
 </td>
 <td width="33%" align="center">
 
 **Discord**
-[프로젝트 디스코드 서버](https://discord.gg/your-server)
+[프로젝트 디스코드 서버](https://github.com/leebeanbin/dinobot/discussions)
 
 </td>
 </tr>
@@ -1175,10 +1175,10 @@ REST API 상세 문서
 
 **DinoBot**로 팀의 생산성을 한 단계 끌어올려보세요! 🚀
 
-[![Star](https://img.shields.io/github/stars/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader)
-[![Fork](https://img.shields.io/github/forks/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader/fork)
-[![Watch](https://img.shields.io/github/watchers/yourusername/meetupLoader?style=social)](https://github.com/yourusername/meetupLoader)
+[![Star](https://img.shields.io/github/stars/leebeanbin/dinobot?style=social)](https://github.com/leebeanbin/dinobot)
+[![Fork](https://img.shields.io/github/forks/leebeanbin/dinobot?style=social)](https://github.com/leebeanbin/dinobot/fork)
+[![Watch](https://img.shields.io/github/watchers/leebeanbin/dinobot?style=social)](https://github.com/leebeanbin/dinobot)
 
-Made with ❤️ by [DinoBot Team](https://github.com/yourusername/meetupLoader/graphs/contributors)
+Made with ❤️ by [leebeanbin](https://github.com/leebeanbin/dinobot/graphs/contributors)
 
 </div>
