@@ -71,6 +71,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_to_file: bool = True
 
+    # CareerOS integration
+    careeros_api_url: str = "http://localhost:8080"
+    careeros_api_token: str = ""
+    careeros_webhook_secret: str = ""
+    digest_channel_id: Optional[int] = None
+
+    # Telegram (channel handled by CareerOS side; documented here for reference)
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 설정 관리자와 동기화
