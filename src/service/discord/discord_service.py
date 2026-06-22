@@ -776,6 +776,84 @@ class DiscordService(IDiscordService):
                 },
             )
 
+        # ── CareerOS onboarding commands ─────────────────────────────
+
+        @self.bot.tree.command(
+            name="onboard",
+            description="커리어OS 온보딩 시작 — 커리어 목표·이력서·GitHub를 순서대로 입력합니다",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @track_discord_command("onboard")
+        async def onboard_command(interaction: discord.Interaction):
+            """커리어OS 온보딩 시작 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.CAREEROS_ONBOARD,
+                {"discord_user_id": str(interaction.user.id)},
+            )
+
+        @self.bot.tree.command(
+            name="career",
+            description="커리어OS 프로필 상태 확인 (CandidateGraph)",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @track_discord_command("career")
+        async def career_status_command(interaction: discord.Interaction):
+            """커리어 프로필 현황 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.CAREEROS_STATUS,
+                {"discord_user_id": str(interaction.user.id)},
+            )
+
+        @self.bot.tree.command(
+            name="restart_onboard",
+            description="커리어OS 온보딩 세션 초기화 후 재시작",
+            guild=discord.Object(id=int(settings.discord_guild_id)),
+        )
+        @track_discord_command("restart_onboard")
+        async def restart_onboard_command(interaction: discord.Interaction):
+            """온보딩 재시작 명령어"""
+            await self._handle_command_common(
+                interaction,
+                CommandType.CAREEROS_RESTART,
+                {"discord_user_id": str(interaction.user.id)},
+            )
+
+        # ── on_message: route to onboarding handler ──────────────────
+
+        @self.bot.event
+        async def on_message(message: discord.Message):
+            if message.author.bot:
+                return
+            try:
+                from src.conversation.onboarding_handler import onboarding_handler
+                from src.conversation.state import ChannelType
+
+                session = await onboarding_handler.get_session(
+                    str(message.author.id), ChannelType.DISCORD
+                )
+                if not session:
+                    return
+
+                attachment_url = None
+                attachment_name = None
+                if message.attachments:
+                    attachment_url = message.attachments[0].url
+                    attachment_name = message.attachments[0].filename
+
+                reply = await onboarding_handler.handle_message(
+                    channel_user_id=str(message.author.id),
+                    channel_type=ChannelType.DISCORD,
+                    text=message.content,
+                    attachment_url=attachment_url,
+                    attachment_name=attachment_name,
+                )
+                if reply:
+                    await message.channel.send(reply)
+            except Exception as msg_error:
+                logger.warning("on_message onboarding error: %s", msg_error)
+
         # 슬래시 명령어 등록 완료 (로그 제거)
 
     @safe_execution("handle_command_common")

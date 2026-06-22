@@ -427,6 +427,12 @@ class ServiceManager(IServiceManager):
                 return await self._archive_page_workflow(request)
             elif request.command_type == CommandType.RESTORE_PAGE:
                 return await self._restore_page_workflow(request)
+            elif request.command_type == CommandType.CAREEROS_ONBOARD:
+                return await self._careeros_onboard_workflow(request)
+            elif request.command_type == CommandType.CAREEROS_STATUS:
+                return await self._careeros_status_workflow(request)
+            elif request.command_type == CommandType.CAREEROS_RESTART:
+                return await self._careeros_restart_workflow(request)
             else:
                 return DiscordMessageResponseDTO(
                     message_type=MessageType.ERROR_NOTIFICATION,
@@ -1434,6 +1440,156 @@ class ServiceManager(IServiceManager):
                     {"error": f"수동 동기화 실패: {sync_error}"},
                     status_code=500,
                 )
+
+        # ── CareerOS daily digest webhook ────────────────────────────
+
+        @self.web_application.post("/careeros/jobs/daily")
+        async def careeros_digest_webhook(
+            request: Request,
+            x_webhook_secret: str = Header(default=""),
+        ):
+            """CareerOS에서 발송하는 일일 공고 다이제스트 수신 엔드포인트."""
+            if x_webhook_secret != settings.careeros_webhook_secret:
+                logger.warning("CareerOS digest webhook: invalid secret from %s",
+                               request.client.host if request.client else "unknown")
+                raise HTTPException(status_code=401, detail="Unauthorized")
+
+            try:
+                from src.dto.careeros.careeros_dtos import CareerOsJobDigestPayload
+                from src.embeds.careeros_embed import build_digest_embeds_from_payload
+
+                raw = await request.json()
+                payload = CareerOsJobDigestPayload.from_dict(raw)
+                embed_map = build_digest_embeds_from_payload(payload)
+
+                channel_id = settings.digest_channel_id
+                if not channel_id:
+                    logger.warning("DIGEST_CHANNEL_ID not configured; skipping Discord send")
+                    return {"success": True, "sent": 0}
+
+                discord_svc = self.discord_service
+                sent = 0
+                if discord_svc and discord_svc.is_bot_ready:
+                    channel = discord_svc.bot.get_channel(channel_id)
+                    if channel:
+                        for embeds in embed_map.values():
+                            for embed in embeds:
+                                await channel.send(embed=embed)
+                            sent += 1
+                    else:
+                        logger.warning("Digest channel %s not found", channel_id)
+
+                logger.info("Digest sent for %d users (date=%s)", sent, payload.digest_date)
+                return {"success": True, "sent": sent, "date": payload.digest_date}
+
+            except Exception as exc:
+                logger.error("CareerOS digest webhook error: %s", exc)
+                return JSONResponse({"success": False, "error": str(exc)}, status_code=500)
+
+        # ── CareerOS MCP tools ────────────────────────────────────────
+
+        try:
+            from mcp_server.careeros_tools import careeros_mcp_router
+            self.web_application.include_router(careeros_mcp_router)
+            logger.info("✅ CareerOS MCP 라우트 등록 완료")
+        except ImportError as e:
+            logger.warning("⚠️ CareerOS MCP 라우트 등록 실패: %s", e)
+
+    # ── CareerOS 온보딩 워크플로우 ────────────────────────────────────
+
+    async def _careeros_onboard_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """커리어OS 온보딩 시작 워크플로우"""
+        try:
+            from src.conversation.onboarding_handler import onboarding_handler
+            from src.conversation.state import ChannelType
+
+            discord_user_id = request.parameters.get("discord_user_id", "")
+            reply = await onboarding_handler.start(
+                channel_user_id=discord_user_id,
+                channel_type=ChannelType.DISCORD,
+            )
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.SUCCESS_NOTIFICATION,
+                content=reply,
+                is_ephemeral=False,
+            )
+        except Exception as exc:
+            logger.error("CareerOS onboard workflow error: %s", exc)
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content="❌ 온보딩 시작 중 오류가 발생했습니다.",
+                is_ephemeral=True,
+            )
+
+    async def _careeros_status_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """커리어OS CandidateGraph 상태 조회 워크플로우"""
+        try:
+            from src.service.careeros import careeros_client
+            from src.conversation.onboarding_handler import onboarding_handler
+            from src.conversation.state import ChannelType
+
+            discord_user_id = request.parameters.get("discord_user_id", "")
+            session = await onboarding_handler.get_session(discord_user_id, ChannelType.DISCORD)
+
+            if not session or not session.careeros_user_id:
+                return DiscordMessageResponseDTO(
+                    message_type=MessageType.ERROR_NOTIFICATION,
+                    content="❌ 온보딩이 완료되지 않았습니다. `/onboard` 를 먼저 실행하세요.",
+                    is_ephemeral=True,
+                )
+
+            graph = await careeros_client.get_candidate_graph(session.careeros_user_id)
+            status = graph.get("status", "UNKNOWN")
+            content = (
+                f"**커리어OS 프로필 현황**\n\n"
+                f"• 상태: `{status}`\n"
+                f"• GitHub: `{session.github_username or '미입력'}`\n"
+                f"• 이력서: `{'업로드됨' if session.resume_id else '미업로드'}`"
+            )
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.SUCCESS_NOTIFICATION,
+                content=content,
+                is_embed=True,
+                is_ephemeral=True,
+            )
+        except Exception as exc:
+            logger.error("CareerOS status workflow error: %s", exc)
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content="❌ 프로필 조회 중 오류가 발생했습니다.",
+                is_ephemeral=True,
+            )
+
+    async def _careeros_restart_workflow(
+        self, request: DiscordCommandRequestDTO
+    ) -> DiscordMessageResponseDTO:
+        """온보딩 세션 초기화 후 재시작 워크플로우"""
+        try:
+            from src.conversation.onboarding_handler import onboarding_handler
+            from src.conversation.state import ChannelType
+
+            discord_user_id = request.parameters.get("discord_user_id", "")
+            await onboarding_handler.delete_session(discord_user_id, ChannelType.DISCORD)
+            reply = await onboarding_handler.start(
+                channel_user_id=discord_user_id,
+                channel_type=ChannelType.DISCORD,
+            )
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.SUCCESS_NOTIFICATION,
+                content=f"🔄 온보딩 세션을 초기화했습니다.\n\n{reply}",
+                is_ephemeral=False,
+            )
+        except Exception as exc:
+            logger.error("CareerOS restart workflow error: %s", exc)
+            return DiscordMessageResponseDTO(
+                message_type=MessageType.ERROR_NOTIFICATION,
+                content="❌ 온보딩 재시작 중 오류가 발생했습니다.",
+                is_ephemeral=True,
+            )
 
     async def _watch_page_workflow(
         self, request: DiscordCommandRequestDTO

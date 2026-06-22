@@ -33,6 +33,11 @@ class CommandType(str, Enum):
     TASK_STATS = "task_stats"
     SEARCH = "search"
 
+    # CareerOS onboarding commands
+    CAREEROS_ONBOARD = "careeros_onboard"
+    CAREEROS_STATUS = "careeros_status"
+    CAREEROS_RESTART = "careeros_restart"
+
 
 class NotionPropertyType(str, Enum):
     """Notion property type enumeration"""
