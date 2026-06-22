@@ -63,6 +63,50 @@
 /fetch
 ```
 
+## 🎯 CareerOS 커리어 관리
+
+### `/onboard` - 커리어 온보딩 시작
+
+```bash
+/onboard
+```
+
+CareerOS AI 프로필을 처음 만들거나 재설정합니다.
+
+**진행 순서:**
+1. 원하는 개발자 유형 입력 (예: "Spring Boot 백엔드")
+2. 이력서 PDF 첨부 (없으면 `/skip`)
+3. GitHub 아이디 입력 (없으면 `/skip`)
+4. 완료 — 매일 맞춤 공고 발송 시작
+
+**이력서 업로드:**
+```
+PDF 파일을 메시지에 첨부해서 보내면 자동으로 CareerOS로 전송됩니다.
+```
+
+### `/career` - 커리어 프로필 상태 확인
+
+```bash
+/career
+```
+
+현재 `CandidateGraph` 상태를 조회합니다:
+- `EMPTY` — 아직 이력서나 GitHub을 연결하지 않은 상태
+- `BUILDING` — 분석 중
+- `READY` — 프로필 완성, 일일 공고 매칭 활성화
+
+### `/restart_onboard` - 온보딩 재시작
+
+```bash
+/restart_onboard
+```
+
+기존 온보딩 세션을 초기화하고 처음부터 다시 시작합니다.
+
+---
+
+> 📖 **CareerOS 연동 상세 가이드**: [CareerOS 연동 가이드](CAREEROS_INTEGRATION.md)
+
 ## 🔍 검색 명령어
 
 ### `/search` - 통합 검색

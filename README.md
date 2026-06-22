@@ -271,6 +271,76 @@ poetry run python run.py
 
 > 📖 **더 자세한 가이드**: [📖 명령어 가이드](docs/COMMANDS.md)
 
+### 🎯 CareerOS 커리어 AI 연동
+
+CareerOS 백엔드와 연동하여 취업 준비 과정을 Discord에서 관리합니다.
+
+<table>
+<tr>
+<td width="33%" align="center">
+
+**온보딩**
+```bash
+/onboard
+```
+AI 커리어 프로필 생성<br>
+이력서 PDF → GitHub 분석
+
+</td>
+<td width="33%" align="center">
+
+**프로필 확인**
+```bash
+/career
+```
+CandidateGraph 상태 조회<br>
+(EMPTY / BUILDING / READY)
+
+</td>
+<td width="33%" align="center">
+
+**일일 공고 다이제스트**<br>
+매일 08:00 UTC 자동 발송<br>
+점수 + 매칭/부족 스킬 포함
+
+</td>
+</tr>
+</table>
+
+**다이제스트 Discord Embed 예시:**
+```
+🔍 오늘의 채용 공고 — 2026-06-22   총 5개 선별
+
+[91점] Backend Engineer @ Kakao
+  ✅ 매칭 스킬: Java, Spring Boot, Redis
+  ❌ 부족 스킬: Kafka
+  Backend · KR · HYBRID
+```
+
+**새 슬래시 커맨드:**
+
+| 커맨드 | 설명 |
+|---|---|
+| `/onboard` | CareerOS 커리어 프로필 온보딩 시작 |
+| `/career` | 현재 CandidateGraph 상태 확인 |
+| `/restart_onboard` | 온보딩 세션 초기화 후 재시작 |
+
+**웹훅 엔드포인트:**
+
+| 엔드포인트 | 설명 |
+|---|---|
+| `POST /careeros/jobs/daily` | CareerOS 일일 다이제스트 수신 (X-Webhook-Secret 인증) |
+
+**MCP 툴 (Claude Code 연동):**
+
+| 툴 | 설명 |
+|---|---|
+| `POST /mcp/careeros/configure_channel` | Discord/Telegram 채널 활성화 토글 |
+| `POST /mcp/careeros/send_digest` | 온디맨드 다이제스트 트리거 |
+| `GET /mcp/careeros/digest_status` | 마지막 다이제스트 상태 조회 |
+
+> 📖 **연동 상세 가이드**: [CareerOS 연동 가이드](docs/CAREEROS_INTEGRATION.md)
+
 ---
 
 ## 📦 설치 및 실행
@@ -397,7 +467,31 @@ WEBHOOK_SECRET=your_secure_webhook_secret
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+**CareerOS 연동**
+```bash
+CAREEROS_API_URL=http://localhost:8080
+CAREEROS_API_TOKEN=<CareerOS JWT>
+CAREEROS_WEBHOOK_SECRET=<공유 비밀값>
+DIGEST_CHANNEL_ID=<Discord 채널 ID>
+```
+
+</td>
+<td width="50%">
+
+**Telegram (선택)**
+```bash
+TELEGRAM_BOT_TOKEN=<BotFather 토큰>
+TELEGRAM_CHAT_ID=<채팅방 ID>
+```
+
+</td>
+</tr>
 </table>
+
+> 📖 **상세 설명**: [CareerOS 연동 가이드](docs/CAREEROS_INTEGRATION.md)
 
 ---
 
@@ -533,35 +627,52 @@ WEBHOOK_SECRET=your_secure_webhook_secret
 
 ## 🏗️ 아키텍처
 
-### 🎯 클린 아키텍처
+### 🎯 프로젝트 구조
 
 ```
-dinobot/
-├── core/           # 핵심 시스템 (로깅, DB, 예외처리)
-├── models/         # DTO 및 인터페이스 정의
-├── services/       # 비즈니스 로직 구현
-│   ├── discord_service.py    # Discord 봇 서비스
-│   ├── notion.py             # Notion API 연동
-│   ├── sync_service.py       # 실시간 동기화
-│   ├── search_service.py     # 검색 엔진
-│   ├── analytics.py          # 통계 분석
-│   └── chart_generator.py    # 차트 생성
-└── main.py         # 애플리케이션 진입점
+src/
+├── core/                      # 핵심 시스템 (로깅, DB, config, exceptions)
+├── service/
+│   ├── discord/               # Discord 봇 서비스 (슬래시 커맨드 등록, 이벤트 핸들러)
+│   ├── notion/                # Notion API 연동
+│   ├── careeros/              # CareerOS REST API 클라이언트 (httpx)
+│   ├── sync_service.py        # Notion ↔ MongoDB 실시간 동기화
+│   ├── search_service.py      # 통합 검색 엔진
+│   └── analytics.py           # 통계 분석
+├── conversation/              # CareerOS 온보딩 대화 상태 머신
+│   ├── state.py               # OnboardingState, ConversationSession (MongoDB TTL)
+│   ├── onboarding_handler.py  # 메시지 라우팅 (CAREER_GOAL → RESUME → GITHUB → COMPLETE)
+│   └── file_upload_handler.py # Discord 첨부파일 다운로드 → CareerOS 업로드
+├── dto/
+│   ├── careeros/              # CareerOS 웹훅 페이로드 (JobCard, UserDigestSection 등)
+│   └── common/                # 공통 DTO, CommandType enum
+├── embeds/
+│   └── careeros_embed.py      # Discord Embed 빌더 (일일 공고 다이제스트)
+└── mcp_server/
+    └── careeros_tools.py      # FastAPI MCP 라우터 (/mcp/careeros/*)
+
+main.py                        # FastAPI 앱 + Discord 봇 진입점
 ```
 
 ### 🔄 데이터 플로우
 
 ```mermaid
 graph TD
-    A[Discord Command] --> B[Command Handler]
-    B --> C[Business Logic]
-    C --> D[Notion API]
-    C --> E[MongoDB]
-    D --> F[Page Creation]
-    E --> G[Data Storage]
-    F --> H[Discord Response]
-    G --> I[Sync Service]
-    I --> J[Real-time Updates]
+    A[Discord /onboard] --> B[OnboardingHandler]
+    B --> C[CareerOSApiClient]
+    C --> D[CareerOS REST API]
+    D --> E[이력서 분석 / GitHub 싱크]
+    E --> F[CandidateGraph READY]
+
+    G[CareerOS DailyDigestAgent] -->|POST /careeros/jobs/daily| H[dinobot FastAPI]
+    H --> I[X-Webhook-Secret 검증]
+    I --> J[build_digest_embeds]
+    J --> K[Discord DIGEST_CHANNEL_ID]
+
+    L[Discord Command] --> M[Command Handler]
+    M --> N[Notion API]
+    N --> O[Page Creation]
+    O --> P[Discord Response]
 ```
 
 ---
@@ -1118,28 +1229,34 @@ SOFTWARE.
 
 <table>
 <tr>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 [🚀 빠른 시작](docs/QUICK_START.md)
 5분 만에 시작하기
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 [📖 명령어 가이드](docs/COMMANDS.md)
 모든 명령어 상세 설명
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 [🚀 배포 가이드](docs/DEPLOYMENT.md)
 프로덕션 배포 방법
 
 </td>
-<td width="25%" align="center">
+<td width="20%" align="center">
 
 [📖 API 문서](docs/API.md)
 REST API 상세 문서
+
+</td>
+<td width="20%" align="center">
+
+[🎯 CareerOS 연동](docs/CAREEROS_INTEGRATION.md)
+커리어 AI 연동 가이드
 
 </td>
 </tr>
