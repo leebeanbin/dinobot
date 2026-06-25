@@ -13,11 +13,28 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/badge/ruff-000000.svg?style=for-the-badge&logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
 
-**노션과 디스코드를 통합하여 팀 협업을 최적화하는 고성능 봇**
+**CareerOS AI 커리어 플랫폼과 연동하여 취업 준비를 Discord에서 관리하는 봇 + 노션-디스코드 팀 협업 자동화 봇**
 
 [🚀 빠른 시작](docs/QUICK_START.md) • [📖 명령어](docs/COMMANDS.md) • [🔧 배포](docs/DEPLOYMENT.md) • [📊 기능](#-주요-기능) • [🛠️ 개발](#-개발-가이드)
 
 </div>
+
+---
+
+## 포트폴리오 에코시스템
+
+dinobot은 동일 개발자가 구성한 3개 프로젝트 포트폴리오의 알림 레이어입니다.
+
+| 프로젝트 | 역할 | 스택 |
+|---------|------|------|
+| **[beanllm](https://github.com/leebeanbin/beanllm)** | AI 인프라 — 8개 LLM 프로바이더 통합 라이브러리 (PyPI) | Python · 6,340 tests |
+| **[careerOS](https://github.com/leebeanbin/careerOS)** | 커리어 AI 플랫폼 백엔드 | Spring Boot 3.3 · 415 tests |
+| **dinobot** ← (this repo) | Discord 커리어 봇 + Notion 협업 봇 | Python · FastAPI · Discord.py |
+
+**연결 방식:**
+- careerOS `DailyDigestAgent` → `POST /careeros/jobs/daily` 웹훅 전송 (매일 08:00 UTC)
+- dinobot 온보딩(`/onboard`) → careerOS REST API로 이력서·GitHub 연동 요청
+- dinobot `/career` → careerOS CandidateGraph 상태 실시간 조회
 
 ---
 
