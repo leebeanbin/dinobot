@@ -2,7 +2,46 @@
 
 dinobot은 FastAPI HTTP 서버와 Discord.py 봇을 **단일 asyncio 이벤트 루프** 안에서 동시에 실행하는 설계를 채택한다.
 
-![System Architecture](../docs/architecture/system-architecture.png)
+```mermaid
+graph TB
+    subgraph CLIENT["Client Zone"]
+        DISCORD[Discord Guild<br/>Users / Slash Commands]
+        CAREEROS_API[CareerOS API :8080]
+    end
+
+    subgraph PROCESS["Single asyncio Process (:8889)"]
+        direction TB
+        subgraph HTTP["FastAPI HTTP Server"]
+            WH[POST /careeros/jobs/daily]
+            HEALTH[GET /health]
+            MCP[POST /mcp/careeros/*]
+        end
+        subgraph BOT["Discord.py Bot"]
+            EVENTS[on_message / on_ready]
+            SLASH[/onboard /sync /status /help]
+        end
+        SM[ServiceManager<br/>Dependency Hub]
+        subgraph SERVICES["Services"]
+            ONBOARD[OnboardingService]
+            NOTION[NotionSyncService]
+            NOTIFY[NotificationService]
+            CLIENT_SVC[CareerOSApiClient]
+        end
+    end
+
+    subgraph INFRA["Infrastructure"]
+        MONGO[(MongoDB Motor<br/>sessions / notion_pages)]
+        PROM[Prometheus :9090/metrics]
+    end
+
+    DISCORD -- "Gateway events" --> BOT
+    CAREEROS_API -- "POST /careeros/jobs/daily" --> HTTP
+    HTTP --> SM
+    BOT --> SM
+    SM --> SERVICES
+    SERVICES --> MONGO
+    CLIENT_SVC --> CAREEROS_API
+```
 
 ---
 

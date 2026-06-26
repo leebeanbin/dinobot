@@ -4,11 +4,73 @@ dinobot은 CareerOS AI 커리어 플랫폼 연동 봇이자 Notion–Discord 협
 
 ## 아키텍처
 
-![System Architecture](../docs/architecture/system-architecture.png)
+```mermaid
+graph TB
+    subgraph CLIENT["Client Zone"]
+        DISCORD[Discord Guild<br/>Users / Slash Commands]
+        CAREEROS_API[CareerOS API :8080]
+    end
+
+    subgraph PROCESS["Single asyncio Process (:8889)"]
+        direction TB
+        subgraph HTTP["FastAPI HTTP Server"]
+            WH[POST /careeros/jobs/daily]
+            HEALTH[GET /health]
+            MCP[POST /mcp/careeros/*]
+        end
+        subgraph BOT["Discord.py Bot"]
+            EVENTS[on_message / on_ready]
+            SLASH[/onboard /sync /status /help]
+        end
+        SM[ServiceManager<br/>Dependency Hub]
+        subgraph SERVICES["Services"]
+            ONBOARD[OnboardingService]
+            NOTION[NotionSyncService]
+            NOTIFY[NotificationService]
+            CLIENT_SVC[CareerOSApiClient]
+        end
+    end
+
+    subgraph INFRA["Infrastructure"]
+        MONGO[(MongoDB Motor<br/>sessions / notion_pages)]
+        PROM[Prometheus :9090/metrics]
+    end
+
+    DISCORD -- "Gateway events" --> BOT
+    CAREEROS_API -- "POST /careeros/jobs/daily" --> HTTP
+    HTTP --> SM
+    BOT --> SM
+    SM --> SERVICES
+    SERVICES --> MONGO
+    CLIENT_SVC --> CAREEROS_API
+```
 
 ## 이벤트 플로우
 
-![Event Flow](../docs/architecture/event-flow.png)
+```mermaid
+flowchart TD
+    subgraph ONBOARD["온보딩 플로우"]
+        JOIN[/onboard 실행] --> GOAL[커리어 목표 수집]
+        GOAL --> RESUME_Q[이력서 요청]
+        RESUME_Q --> RESUME_A[PDF 업로드 → CareerOS 전송]
+        RESUME_A --> GITHUB_Q[GitHub 아이디 요청]
+        GITHUB_Q --> GITHUB_A[GitHub 동기화 트리거]
+        GITHUB_A --> COMPLETE[State: COMPLETE]
+    end
+
+    subgraph DIGEST["일일 다이제스트 (08:00 UTC)"]
+        SCHED[CareerOS POST /careeros/jobs/daily] --> RECV[Webhook 수신]
+        RECV --> RENDER[Discord Embed 생성]
+        RENDER --> DM[사용자 DM 전송]
+    end
+
+    subgraph NOTION["Notion 동기화"]
+        CMD[/sync 커맨드] --> PULL[Notion 페이지 조회]
+        PULL --> DIFF[notion_pages 컬렉션 비교]
+        DIFF --> UPSERT[변경 페이지 CareerOS 업서트]
+        UPSERT --> ACK[동기화 결과 응답]
+    end
+```
 
 ## 도메인 문서
 

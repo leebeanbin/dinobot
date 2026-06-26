@@ -2,23 +2,17 @@
 
 Discord 온보딩은 `/onboard` 커맨드에서 시작하는 멀티스텝 대화 흐름이다. 각 단계는 MongoDB에 지속 저장되어 프로세스 재시작 후에도 복원된다.
 
-![Event Flow](../docs/architecture/event-flow.png)
-
 ---
 
 ## 상태 전이
 
-```
-[*] ──/onboard──► CAREER_GOAL
-                      │  커리어 목표 텍스트 입력
-                      ▼
-                   RESUME
-                      │  PDF 첨부파일 업로드 (또는 /skip)
-                      ▼
-                   GITHUB
-                      │  GitHub 아이디 입력 (또는 /skip)
-                      ▼
-                  COMPLETE ──/restart_onboard──► CAREER_GOAL
+```mermaid
+stateDiagram-v2
+    [*] --> CAREER_GOAL : /onboard
+    CAREER_GOAL --> RESUME : 커리어 목표 텍스트 입력
+    RESUME --> GITHUB : PDF 업로드 or /skip
+    GITHUB --> COMPLETE : GitHub 아이디 입력 or /skip
+    COMPLETE --> CAREER_GOAL : /restart_onboard
 ```
 
 | 상태 | 진입 조건 | dinobot 동작 |

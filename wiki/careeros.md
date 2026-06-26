@@ -64,4 +64,19 @@ CareerOS → dinobot 방향의 연동:
 - 페이로드: `CareerOsJobDigestPayload` (DTO: `src/dto/careeros/careeros_dtos.py`).
 - 처리 흐름: 페이로드 파싱 → `build_digest_embeds_from_payload()` → Discord 채널 전송.
 
-자세한 플로우는 [docs/CAREEROS_INTEGRATION.md](../docs/CAREEROS_INTEGRATION.md) 및 [이벤트 플로우 다이어그램](../docs/architecture/event-flow.png) 참조.
+처리 흐름 요약:
+
+```mermaid
+sequenceDiagram
+    participant CO as CareerOS
+    participant DW as dinobot Webhook
+    participant DS as DiscordService
+    participant U as User DM
+
+    CO->>DW: POST /careeros/jobs/daily (X-Webhook-Secret)
+    DW->>DW: CareerOsJobDigestPayload 파싱
+    DW->>DS: build_digest_embeds_from_payload()
+    DS->>U: discord.Embed 전송 (channel.send)
+```
+
+자세한 통합 명세는 [docs/CAREEROS_INTEGRATION.md](../docs/CAREEROS_INTEGRATION.md) 참조.
